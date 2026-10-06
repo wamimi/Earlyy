@@ -1,6 +1,6 @@
 (function () {
-  var guardKey = "__earlyReplyVerificationGuardV105";
-  var reloadKey = "early-reclaim-viewer-request-reload-v105";
+  var guardKey = "__earlyReplyVerificationGuardV106";
+  var reloadKey = "early-reclaim-viewer-request-reload-v106";
 
   function boot() {
     if (!window.Reclaim || !window.reclaimInterceptor) {
@@ -49,8 +49,10 @@
 
       function addHeader(name, value) {
         if (typeof name !== "string" || typeof value !== "string") return;
-        if (blockedHeaders[name.toLowerCase()]) return;
-        headers[name] = value;
+        var normalizedName = name.toLowerCase();
+        if (blockedHeaders[normalizedName]) return;
+        headers[normalizedName === "authorization" ? "Authorization" : name] =
+          value;
       }
 
       if (!source) return headers;
@@ -228,7 +230,7 @@
 
         return response;
       },
-      "early-reply-and-viewer-v105"
+      "early-reply-and-viewer-v106"
     );
   }
 

@@ -2,9 +2,9 @@ import { verifyProof, type Proof } from "@reclaimprotocol/js-sdk";
 
 export const X_CONFORMANCE_PROVIDER = {
   id: "fe0767e9-8172-48c0-ba64-702703c4c745",
-  version: "1.0.5",
+  version: "1.0.6",
   configurationHash:
-    "0xdb76bb8e162fc399e141014598275636830660fee7a64511ee86b5b21310a40c",
+    "0x626bcccfac4c2076cc473b4d2d3adacb7e67238e4a3c75da9879a2df8bea00e2",
   providerHashes: [
     "0x8e7188e68658202bd064f5b88e6ef23df249f2f9fd9d0fafb8bea60dccd97098",
     "0x7ae9e7cb8b638d1b6b114b392d0590bb6977d29bbd2070e109689d6afa5f61c4",
