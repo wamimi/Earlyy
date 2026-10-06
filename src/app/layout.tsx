@@ -3,10 +3,12 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { EarlyAuthProvider } from "@/components/early-auth";
 import "./globals.css";
+import "@/components/landing.css";
+import "@/components/public-pages.css";
 
 export const metadata: Metadata = {
-  title: "Early | Proof of discovery for the internet",
-  description: "Turn the things you discovered before the crowd into verifiable, privacy-conscious proof.",
+  title: "Early | A place in the story",
+  description: "Early is building a way to turn early support into recognition, access, and opportunity.",
   icons: {
     icon: "/early-logo.svg",
     apple: "/early-logo.svg"

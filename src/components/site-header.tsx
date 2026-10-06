@@ -8,7 +8,7 @@ import { useEarlyAuth } from "./early-auth";
 const links = [
   { label: "How it works", href: "/#how" },
   { label: "For teams", href: "/#teams" },
-  { label: "Vault", href: "/vault" },
+  { label: "Campaigns", href: "/campaigns" },
   { label: "Developers", href: "/developers" },
 ] as const;
 
@@ -36,8 +36,8 @@ export function SiteHeader() {
       <div className="header-actions">
         {auth.authenticated ? (
           <>
-            <Link className="button button-small button-dark" href="/proof">
-              Create proof
+            <Link className="button button-small button-dark" href="/campaigns">
+              Explore Early
             </Link>
             <button
               className="icon-button"

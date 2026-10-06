@@ -9,17 +9,16 @@ const vaultAddress =
 
 export default function DevelopersPage() {
   return (
-    <main className="product-main">
+    <main className="product-main" id="top">
       <SiteHeader />
       <section className="product-page">
         <div className="site-container">
           <div className="product-heading">
             <div>
-              <span>EARLY PROTOCOL / V2</span>
-              <h1>Build with verified discovery.</h1>
+              <span>FOR BUILDERS · DEVELOPMENT PREVIEW</span>
+              <h1>Build for the people<br />who show up.</h1>
               <p>
-                Reuse Early’s versioned provider schemas, Base registry, and
-                private eligibility boundary without rebuilding the zkTLS flow.
+                Explore the architecture behind verifiable support and private eligibility. These are development notes, not a production integration guide. Public integrations have not launched.
               </p>
             </div>
           </div>
@@ -91,7 +90,7 @@ await registry.verifyAndRegister(reclaimProof);`}</code>
               </div>
             </section>
 
-            <section className="developer-section">
+            <section className="developer-section" id="privacy">
               <h2>Trust boundary</h2>
               <div>
                 <p>
