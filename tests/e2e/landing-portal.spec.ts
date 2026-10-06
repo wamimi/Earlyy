@@ -13,7 +13,7 @@ test('image portal fills the viewport uniformly and reverses on scroll', async (
   });
   await expect(page.locator('.el-portal')).toHaveAttribute('data-phase', 'entered');
   await expect.poll(async () => Number(await page.locator('.el-portal-reveal').evaluate(el => getComputedStyle(el).opacity))).toBeGreaterThan(.9);
-  await expect(page.locator('.el-marquee')).toHaveCSS('opacity', '0');
+  await expect(page.locator('.el-image-stack')).toHaveCSS('opacity', '0');
   await expect(page.locator('.el-portal-scrim')).toHaveCSS('opacity', '0.8');
   const enlarged = await portal.boundingBox();
   const viewport = page.viewportSize()!;
@@ -24,8 +24,7 @@ test('image portal fills the viewport uniformly and reverses on scroll', async (
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await expect(page.locator('.el-portal')).toHaveAttribute('data-phase', 'opening');
   await expect.poll(async () => (await portal.boundingBox())!.width).toBeCloseTo(initial!.width, 0);
-  await page.getByRole('button', { name: 'Create proof', exact: true }).click();
-  await expect(page.getByLabel('X post URL')).toBeVisible();
+  await expect(page.locator('.el-hero-copy').getByRole('link', { name: 'Explore Early', exact: true })).toBeVisible();
 });
 
 test('reduced motion keeps the portal static and unpinned', async ({ page }) => {
@@ -34,28 +33,19 @@ test('reduced motion keeps the portal static and unpinned', async ({ page }) => 
   await expect(page.locator('.el-portal')).toHaveAttribute('data-motion', 'reduced');
   await expect(page.locator('.el-portal-stage')).toHaveCSS('position', 'relative');
   await expect(page.getByTestId('image-portal')).toHaveCSS('transform', 'none');
-  await expect(page.getByRole('heading', { name: 'A moment becomes something you can keep.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'You were part of the beginning. Stay part of the story.' })).toBeVisible();
 });
 
-test('valid X link is carried into the proof workspace', async ({ page }) => {
+test('manual stack selection becomes the scroll portal', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Create proof', exact: true }).click();
-  await page.getByLabel('X post URL').fill('https://x.com/openai/status/1234567890123456789');
-  await page.getByRole('button', { name: 'Create an X proof' }).click();
-  await expect(page).toHaveURL(/\/proof\?url=https%3A%2F%2Fx.com%2Fopenai%2Fstatus%2F1234567890123456789/);
-});
-
-test('uniform creator row moves right and freezes for the backstage portal', async ({ page }) => {
-  await page.goto('/');
-  const track = page.locator('.el-marquee-track');
-  const first = await track.evaluate(el => el.getBoundingClientRect().x);
-  await expect.poll(() => track.evaluate(el => el.getBoundingClientRect().x)).toBeGreaterThan(first + 3);
-  const sizes = await page.locator('.el-marquee-image').evaluateAll(items => items.map(el => [el.clientWidth, el.clientHeight]));
-  expect(new Set(sizes.map(size => size.join(','))).size).toBe(1);
-  await expect(page.getByTestId('image-portal').locator('img')).toHaveAttribute('alt', /backstage passes/);
-  await page.getByRole('button', { name: 'Pause images' }).click();
-  const stopped = await track.evaluate(el => el.getBoundingClientRect().x);
-  await expect(page.getByRole('button', { name: 'Resume images' })).toBeVisible();
-  await page.getByRole('button', { name: 'Create proof', exact: true }).click();
-  expect(await track.evaluate(el => el.getBoundingClientRect().x)).toBeCloseTo(stopped, 0);
+  const photo = page.getByTestId('image-portal').locator('img');
+  await expect(photo).toHaveAttribute('alt', /backstage passes/);
+  await page.getByRole('button', { name: 'Next image' }).click();
+  await expect(photo).toHaveAttribute('alt', /future ticket/);
+  await page.evaluate(() => {
+    const section = document.querySelector('.el-portal') as HTMLElement;
+    window.scrollTo({ top: section.getBoundingClientRect().top + scrollY + (section.offsetHeight - innerHeight) * .98, behavior: 'instant' });
+  });
+  await expect(page.locator('.el-portal')).toHaveAttribute('data-phase', 'entered');
+  await expect(photo).toHaveAttribute('alt', /future ticket/);
 });
