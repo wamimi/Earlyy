@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
-import { motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 const ramp = (value: number, start: number, end: number) => Math.min(1, Math.max(0, (value - start) / (end - start)));
 
@@ -20,10 +20,12 @@ export function ImagePortalHero({ children }: { children: ReactNode }) {
   const phaseRef = useRef<"opening" | "zooming" | "entered">("opening");
   const [phase, setPhase] = useState<"opening" | "zooming" | "entered">("opening");
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end end"] });
-  const trackX = useMotionValue(0);
-  const selectedX = useMotionValue(0);
-  const portalX = useTransform(() => selectedX.get() * (1 - ramp(scrollYProgress.get(), 0, .14)));
-  const portalOpacity = useTransform(scrollYProgress, (p) => ramp(p, 0, .015));
+  const images = [
+    { src: "/creator-day-one-backstage.jpg", alt: "A creator offers free backstage passes to day-one fans who keep this video as proof" },
+    { src: "/creator-free-ticket.jpg", alt: "An artist invites early supporters to keep a post as their future ticket" },
+    { src: "/creator-small-artist.jpg", alt: "A fan finds an artist before their audience grows" },
+  ];
+  const [selected, setSelected] = useState(0);
   const scale = useTransform(scrollYProgress, (p) => 1 + ramp(p, .14, .73) * (geometry.scale - 1) + ramp(p, .73, 1) * geometry.scale * .08);
   const y = useTransform(scrollYProgress, (p) => geometry.y * (1 - ramp(p, .14, .73)));
   const radius = useTransform(scrollYProgress, (p) => 16 * (1 - ramp(p, 0, .73)));
@@ -41,27 +43,6 @@ export function ImagePortalHero({ children }: { children: ReactNode }) {
       setPhase(next);
     }
   });
-
-  const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    if (reducedMotion) return;
-    let frame = 0;
-    let previous = 0;
-    let distance = ((trackX.get() % ((geometry.width + 22) * 3)) + ((geometry.width + 22) * 3)) % ((geometry.width + 22) * 3);
-    const cycle = (geometry.width + 22) * 3;
-    const tick = (time: number) => {
-      if (previous && scrollYProgress.get() <= .001 && !paused && !document.hidden) {
-        distance = (distance + Math.min(time - previous, 50) * .025) % cycle;
-      }
-      previous = time;
-      const offset = distance - cycle * 2;
-      trackX.set(offset);
-      if (scrollYProgress.get() <= .001) selectedX.set(distance - Math.round(distance / cycle) * cycle);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [geometry.width, paused, reducedMotion, scrollYProgress, selectedX, trackX]);
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -85,33 +66,28 @@ export function ImagePortalHero({ children }: { children: ReactNode }) {
     <section ref={section} className="el-portal" data-motion={reducedMotion ? "reduced" : "full"} data-phase={phase} id="top" aria-label="Early, proof of discovery">
       <div ref={stage} className="el-portal-stage">
         <motion.div ref={copy} className="el-hero-copy" style={reducedMotion ? undefined : { opacity: copyOpacity, y: copyY }} inert={!reducedMotion && phase !== "opening"}>
-          <p className="el-tagline">A different kind of receipt.</p>
-          <h1>You knew before<br />everyone else. <span>Prove it.</span></h1>
-          <p className="el-hero-description">The artist. The idea. The next big thing.<br />Keep proof of the moments you discovered first.</p>
+          <p className="el-tagline">For the people who believed first.</p>
+          <h1>You helped it grow.<br /><span>You should be part of it.</span></h1>
+          <p className="el-hero-description">The first listen. The first reply. The first leap of faith.<br />Turn the support you gave into a place in what comes next.</p>
           {children}
           <a className="el-skip" href="#how">See how it works <ArrowDown size={14} /></a>
-        {!reducedMotion && <button className="el-marquee-pause" type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? "Resume images" : "Pause images"}</button>}
         </motion.div>
-
-        <motion.div className="el-marquee" aria-hidden="true" style={{ top: `calc(50% + ${geometry.y}px)`, opacity: reducedMotion ? 1 : sideOpacity }}>
-          <motion.div className="el-marquee-track" style={{ left: `calc(50% - ${geometry.width / 2}px)`, x: reducedMotion ? 0 : trackX }}>
-            {Array.from({ length: 5 }, (_, group) => ["/creator-day-one-backstage.jpg", "/creator-small-artist.jpg", "/creator-free-ticket.jpg"].map((src, index) => (
-              <figure className="el-marquee-image" key={`${group}-${index}`} style={{ width: geometry.width, height: geometry.height }}>
-                <Image src={src} alt="" fill sizes="300px" />
-              </figure>
-            )))}
-          </motion.div>
+        <motion.div className="el-image-stack" aria-hidden="true" style={{ width: geometry.width, height: geometry.height, y: geometry.y, opacity: reducedMotion ? 1 : sideOpacity }}>
+          {[2, 1].map((depth) => <figure key={depth} style={{ transform: `translate(${depth * 9}px, ${-depth * 9}px) rotate(${depth === 1 ? -5 : 6}deg)` }}><Image src={images[(selected + depth) % images.length].src} alt="" fill sizes="300px" /></figure>)}
         </motion.div>
-
-
-        <motion.figure className="el-portal-image" data-testid="image-portal" style={reducedMotion ? undefined : { width: geometry.width, height: geometry.height, scale, y, x: portalX, opacity: portalOpacity, borderRadius: radius }}>
-          <Image src="/creator-day-one-backstage.jpg" alt="A creator offers free backstage passes to day-one fans who keep this video as proof" fill sizes="100vw" priority className="el-portal-photo" />
+        <motion.div className="el-stack-controls" style={reducedMotion ? undefined : { y: geometry.width < 300 ? geometry.y - geometry.height / 2 - 33 : geometry.y + geometry.height / 2 + 27, opacity: copyOpacity }} inert={!reducedMotion && phase !== "opening"}>
+          <button type="button" aria-label="Previous image" onClick={() => setSelected((selected + images.length - 1) % images.length)}>←</button>
+          <span>{selected + 1} / {images.length}</span>
+          <button type="button" aria-label="Next image" onClick={() => setSelected((selected + 1) % images.length)}>→</button>
+        </motion.div>
+        <motion.figure className="el-portal-image" data-testid="image-portal" style={reducedMotion ? undefined : { width: geometry.width, height: geometry.height, scale, y, borderRadius: radius }}>
+          <Image src={images[selected].src} alt={images[selected].alt} fill sizes="100vw" priority className="el-portal-photo" />
         </motion.figure>
         {!reducedMotion && <motion.div className="el-portal-scrim" style={{ opacity: scrim }} aria-hidden="true" />}
         <motion.div className="el-portal-reveal" style={reducedMotion ? undefined : { opacity: revealOpacity, y: revealY }} inert={!reducedMotion && phase !== "entered"} aria-hidden={!reducedMotion && phase !== "entered"}>
-          <span>Early / proof of discovery</span>
-          <h2>A moment becomes<br />something you can keep.</h2>
-          <p>Prove the interaction. Preserve the moment.<br />Choose what the world gets to see.</p>
+          <span>Early / a place in the story</span>
+          <h2>You were part of the beginning.<br />Stay part of the story.</h2>
+          <p>A record of your support.<br />A way for the people you believe in to give back.</p>
           <Link href="#how">How it works <ArrowUpRight size={19} /></Link>
         </motion.div>
         <motion.div className="el-portal-caption" style={reducedMotion ? undefined : { opacity: copyOpacity }} aria-hidden="true"><span>Follow your curiosity.</span><span>Scroll into the moment ↓</span></motion.div>
