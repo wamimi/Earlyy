@@ -9,7 +9,7 @@ test.describe("Early V2 product surfaces", () => {
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "Being early used to be a story. Now it's proof.",
+        name: "You knew before everyone else. Prove it.",
       })
     ).toBeVisible();
     await expect(
@@ -28,6 +28,7 @@ test.describe("Early V2 product surfaces", () => {
   }) => {
     await page.goto("/");
 
+    await page.getByRole("button", { name: "Create proof", exact: true }).click();
     await page.getByLabel("X post URL").fill("https://x.com/not-a-post");
     await page.getByRole("button", { name: "Create an X proof" }).click();
 
