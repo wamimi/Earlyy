@@ -1,0 +1,9 @@
+{
+  "chainId": 11155111,
+  "network": "ethereum-sepolia",
+  "earlyPrivateDiscoveryVault": null,
+  "owner": null,
+  "attestor": null,
+  "trustedRelayer": null,
+  "deployedAt": null
+}

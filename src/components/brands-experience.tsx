@@ -1,0 +1,73 @@
+"use client";
+
+import Image from "next/image";
+import { useRef, useState } from "react";
+import { ArrowRight, Check, CalendarDays, CreditCard, Headphones, Heart, Mail, Package, Send, ShoppingBag, ShoppingCart, Star, Ticket, UserRound, Users, X } from "lucide-react";
+import { SiteHeader } from "./site-header";
+import { LandingFooter } from "./landing-footer";
+import { useEarlyAuth } from "./early-auth";
+
+const activities = [
+  { label: "Make a purchase", icon: ShoppingCart },
+  { label: "Stream or listen", icon: Headphones },
+  { label: "Follow or subscribe", icon: UserRound },
+  { label: "Join a waitlist", icon: Mail },
+];
+const rewards = [
+  { label: "Tickets", icon: Ticket, description: "Reward top supporters with access to your next event." },
+  { label: "Products", icon: ShoppingBag, description: "Offer exclusive merchandise your fans will actually want." },
+  { label: "Points", icon: Star, description: "Give loyalty points redeemable for products or benefits." },
+  { label: "Cash rewards", icon: CreditCard, description: "Set a reward budget for the people who backed you." },
+];
+const deliveries = [
+  { label: "Send digitally", icon: Send },
+  { label: "Ship a product", icon: Package },
+  { label: "Send a payout", icon: CreditCard },
+  { label: "Arrange collection", icon: UserRound },
+];
+
+export function BrandsExperience() {
+  const auth = useEarlyAuth();
+  const [activity, setActivity] = useState("Make a purchase");
+  const [reward, setReward] = useState("Tickets");
+  const [delivery, setDelivery] = useState("Send digitally");
+  const [cutoff, setCutoff] = useState("");
+  const [downloaded, setDownloaded] = useState(false);
+  const planner = useRef<HTMLDialogElement>(null);
+  function openPlanner() { setDownloaded(false); planner.current?.showModal(); }
+  function saveBrief(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const date = cutoff || "To be decided";
+    const body = `# Early campaign brief\n\n## Artist, brand, or community\n${values.get("name")}\n\n## Qualifying activity\n${activity}\n\n## Eligibility cutoff\n${date}\n\n## Reward type\n${reward}\n\n## Delivery\n${delivery}\n\n## Reward details and availability\n${values.get("details")}\n\nPlanning brief only. This does not publish a campaign. Confirm source verification, reward funding, and fulfilment before launch.\n`;
+    const url = URL.createObjectURL(new Blob([body], { type: "text/markdown" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = "early-brand-campaign-brief.md"; link.click();
+    URL.revokeObjectURL(url); setDownloaded(true);
+  }
+  return (
+    <main id="top" className="product-main brands-page">
+      <section className="br-hero">
+        <Image src="/brands/hero-inner-circle.png" alt="" className="br-hero-image" fill priority sizes="100vw" />
+        <SiteHeader action={<><button className="br-button br-signin" onClick={auth.authenticated ? () => void auth.logout() : auth.login} disabled={!auth.ready} aria-busy={!auth.ready}>{auth.authenticated ? "Sign out" : "Sign in"}</button><button className="br-button br-coral br-header-start" onClick={openPlanner}>Get started</button></>} />
+        <div className="br-container br-hero-copy"><span className="br-eyebrow">Early brands</span><h1>Reward the people<br />behind your growth.</h1><p>Turn verified support into tickets, products,<br className="br-desktop-break" /> points, and rewards.</p><div className="br-actions"><button className="br-button br-coral" onClick={openPlanner}>Plan a campaign <ArrowRight size={18} /></button><a className="br-button br-outline" href="#ideas">Explore ideas <ArrowRight size={18} /></a></div></div>
+      </section>
+
+      <section className="br-container br-rewards" id="ideas" aria-labelledby="reward-heading"><span className="br-eyebrow">Real ways to reward</span><h2 id="reward-heading">You set the offer.</h2><p className="br-lead">Turn support into what matters most for your audience.</p><div className="br-rewards-photo"><Image src="/brands/rewards-inner-circle.png" alt="Concert tickets, an Early sweatshirt, a loyalty points card, and a cash reward receipt" fill sizes="(max-width: 700px) 180vw, 90vw" /></div><div className="br-reward-descriptions">{rewards.map((item, index) => <div key={item.label}><div className="br-mobile-reward-image" style={{backgroundPosition: `${index * 100 / 3}% center`}} aria-hidden="true" /><h3>{item.label}</h3><p>{item.description}</p></div>)}</div></section>
+
+      <section className="br-how" id="planner" aria-labelledby="brand-how"><div className="br-container"><span className="br-eyebrow">How it works</span><h2 id="brand-how">A campaign, on your terms.</h2><p className="br-lead">Define the criteria. Choose the reward. Plan delivery.</p><div className="br-builder">
+        <fieldset className="br-build-step"><legend><span>1</span>Qualifying activity</legend><p>Choose the support you want to recognise.</p><div className="br-options">{activities.map(({label, icon: Icon}) => <label className={activity === label ? "is-selected" : ""} key={label}><input type="radio" name="activity" value={label} checked={activity === label} onChange={() => setActivity(label)} /><Icon size={18} /><span>{label}</span>{activity === label && <Check size={15} />}</label>)}</div></fieldset>
+        <fieldset className="br-build-step br-date-step"><legend><span>2</span>Cutoff</legend><p>Set the moment that makes someone early.</p><div className="br-calendar-art" aria-hidden="true"><CalendarDays size={35} /><span>Before the crowd.</span><div>{Array.from({length:21}, (_, index) => <i className={cutoff && index + 1 === Number(cutoff.slice(-2)) ? "br-selected-day" : ""} key={index}>{index + 1}</i>)}</div></div><label className="br-date-label" htmlFor="eligibility-cutoff">Support before<input id="eligibility-cutoff" type="date" value={cutoff} onChange={event => setCutoff(event.target.value)} /></label></fieldset>
+        <fieldset className="br-build-step"><legend><span>3</span>Reward type</legend><p>Pick what your supporters will receive.</p><div className="br-options">{rewards.map(({label, icon: Icon}) => <label className={reward === label ? "is-selected" : ""} key={label}><input type="radio" name="reward" value={label} checked={reward === label} onChange={() => {setReward(label); setDelivery(label === "Products" ? "Ship a product" : label === "Cash rewards" ? "Send a payout" : "Send digitally");}} /><Icon size={18} /><span>{label}</span>{reward === label && <Check size={15} />}</label>)}</div></fieldset>
+        <fieldset className="br-build-step"><legend><span>4</span>Fulfilment</legend><p>Choose how rewards reach your supporters.</p><div className="br-options">{deliveries.map(({label, icon: Icon}) => <label className={delivery === label ? "is-selected" : ""} key={label}><input type="radio" name="delivery" value={label} checked={delivery === label} onChange={() => setDelivery(label)} /><Icon size={18} /><span>{label}</span>{delivery === label && <Check size={15} />}</label>)}</div></fieldset>
+      </div><div className="br-builder-bottom"><p>Your choices become a campaign brief. Verification and reward delivery are planned before launch.</p><button className="br-text-button" onClick={openPlanner}>Build your brief <ArrowRight size={18} /></button></div></div></section>
+
+      <section className="br-recognition" aria-labelledby="recognition-heading"><div className="br-recognition-image"><Image src="/brands/bundle-inner-circle.png" alt="Early merchandise, a vinyl release, and membership passes arranged on emerald glass" fill sizes="(max-width: 700px) 100vw, 50vw" /></div><div className="br-recognition-copy"><span className="br-eyebrow">Built for lasting fans</span><h2 id="recognition-heading">Recognition<br />that brings<br />people back.</h2><div className="br-benefit"><span><Users size={30} /></span><div><h3>Make supporters feel seen.</h3><p>Turn meaningful support into memorable experiences.</p></div></div><div className="br-benefit"><span><Heart size={30} /></span><div><h3>Build deeper relationships.</h3><p>Give people more reasons to keep coming back.</p></div></div></div></section>
+
+      <section className="br-final"><Image src="/brands/background.png" alt="" fill sizes="100vw" /><div className="br-container"><span className="br-eyebrow">Get started</span><h2>Give your first customers<br />a reason to return.</h2><div className="br-actions"><button className="br-button br-coral" onClick={openPlanner}>Plan a campaign <ArrowRight size={18} /></button><a className="br-button br-outline" href="#ideas">Explore ideas <ArrowRight size={18} /></a></div></div></section>
+      <LandingFooter compact />
+
+      <dialog ref={planner} className="br-dialog" aria-labelledby="brief-heading" onClick={event => {if(event.target === event.currentTarget) planner.current?.close();}}><div className="br-dialog-content"><button className="br-dialog-close" aria-label="Close campaign planner" onClick={() => planner.current?.close()}><X size={22} /></button><span className="br-eyebrow">Your next campaign</span><h2 id="brief-heading">Start with your people.</h2><p>Keep your plan in a brief you can refine before launch.</p><dl className="br-brief-summary"><div><dt>Activity</dt><dd>{activity}</dd></div><div><dt>Cutoff</dt><dd>{cutoff || "To be decided"}</dd></div><div><dt>Reward</dt><dd>{reward}</dd></div><div><dt>Delivery</dt><dd>{delivery}</dd></div></dl><a className="br-text-button" href="#planner" onClick={() => planner.current?.close()}>Adjust your choices <ArrowRight size={16} /></a><form onSubmit={saveBrief}><label>Artist, brand, or community<input name="name" required maxLength={160} placeholder="Your name or business" /></label><label>Reward details and availability<textarea name="details" required maxLength={1500} placeholder="For example, 100 reserved tickets for eligible first listeners." /></label><button type="submit" className="br-button br-coral">Download campaign brief <ArrowRight size={18} /></button><p className="br-form-note">Saved on your device. This does not publish a campaign or submit your information.</p>{downloaded && <p role="status" className="br-success"><Check size={18} /> Your campaign brief is ready.</p>}</form></div></dialog>
+    </main>
+  );
+}

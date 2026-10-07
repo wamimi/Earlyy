@@ -1,0 +1,15 @@
+# Inner Circle refinement
+
+Preview generated using the built-in image generation tool. Original logo proposals and Brands imagery preserved. This is a raster concept sheet; production vector geometry and consistent wordmark weights will be finalized after direction selection.
+
+## Initial edit prompt
+
+Use case: logo-brand. Edit the attached Inner Circle Early logo proposal, retaining its identity and layout. The user loves this concept but finds it too bold. Refine rather than redesign.
+Keep the distinctive near-circular lowercase-e emerald symbol with a coral dot at the upper-right opening. Reduce ring and horizontal crossbar thickness by approximately 20-25 percent, expand its inner negative space, refine smooth rounded terminals, reduce coral dot diameter by approximately 15 percent while maintaining its position in the opening and balanced clear space. Preserve same outer silhouette and recognisable e construction. It should still be strong enough for cap and sweatshirt embroidery, not hairline.
+Change the exact wordmark "Early" from heavy bold to refined MEDIUM weight, approximately 25 percent thinner strokes, clean geometric sans-serif with gently rounded details, open counters, slightly more breathing room between letters. Preserve uppercase E lowercase arly. Do not shrink the whole design in place of thinning its strokes.
+Palette solid emerald #123F32, coral #FF785F, ivory #FFF8EE. Flat crisp vector-like artwork, no texture, gradient, shadow or 3D. Keep original branding sheet: large horizontal primary lockup in upper two thirds, small demonstrations in lower third. Upper-left small heading exact text "Inner Circle · Refined". Lower-left demonstration must be a truly single-colour emerald symbol, INCLUDING the formerly coral dot in emerald. Lower-middle ivory symbol and wordmark on emerald swatch with coral dot. Lower-right icon ivory symbol/coral dot on emerald rounded square. All instances must use the same NEW thinner geometry and NEW medium-weight typography. Maintain spacious warm ivory backdrop and premium restrained composition. Do not add merch photos, slogans or other marks.
+
+## Wordmark refinement prompt
+
+Refine this logo sheet with one targeted change: the large primary Early wordmark is still much too bold. Make EVERY instance of Early visibly lighter, a true medium weight geometric sans serif equivalent to Plus Jakarta Sans 500. Reduce all letter stroke thickness by an additional 30 percent, enlarge counters, preserve letter heights and exact text Early and total layout. Lowercase a and r must have generous negative space. Do not merely scale the letters down. Ensure the large top wordmark and small reversed wordmark use exactly the same letterforms and weight. Keep the thinner emerald e-circle symbol and coral dot unchanged, all positions, warm ivory background, emerald/coral palette, heading and lower examples unchanged. Flat crisp vector-like rendering. The goal is an elegant lighter wordmark alongside the established mark, not bold heavy lettering.
+

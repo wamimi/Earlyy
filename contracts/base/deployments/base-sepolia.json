@@ -1,0 +1,9 @@
+{
+  "chainId": 84532,
+  "network": "base-sepolia",
+  "reclaimVerifier": "0xF90085f5Fd1a3bEb8678623409b3811eCeC5f6A5",
+  "earlyDiscoveryRegistry": null,
+  "campaignClaims": null,
+  "deployedAt": null,
+  "deployer": null
+}

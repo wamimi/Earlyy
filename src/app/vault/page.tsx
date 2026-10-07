@@ -1,27 +1,4 @@
-import { SiteFooter } from "@/components/site-footer";
+import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { VaultView } from "@/components/vault-view";
-
-export default function VaultPage() {
-  return (
-    <main className="product-main">
-      <SiteHeader />
-      <section className="product-page">
-        <div className="site-container">
-          <div className="product-heading">
-            <div>
-              <span>PRIVATE DISCOVERY VAULT</span>
-              <h1>Proof without a public history.</h1>
-              <p>
-                Encrypted artifacts can be evaluated for campaign eligibility
-                without revealing the discoveries inside your vault.
-              </p>
-            </div>
-          </div>
-          <VaultView />
-        </div>
-      </section>
-      <SiteFooter />
-    </main>
-  );
-}
+import { SiteFooter } from "@/components/site-footer";
+export default function Page() { return <main className="product-main" id="top"><SiteHeader/><section className="product-page"><div className="site-container"><div className="product-heading"><div><span>TAKING SHAPE</span><h1>Your story. Your choice to share.</h1><p>We’re developing private eligibility checks so recognition doesn’t require publishing your entire history. The vault is a development prototype and is not open for public use yet.</p></div></div><div className="el-hero-actions"><Link className="el-primary" href="/campaigns">Explore future campaigns ↗</Link><Link className="el-secondary" href="/developers#privacy">Understand the architecture ↗</Link></div></div></section><SiteFooter/></main>; }

@@ -1,166 +1,54 @@
-import { expect, test } from "@playwright/test";
-
-const routes = ["/", "/proof", "/vault", "/campaigns", "/developers"];
-
-test.describe("Early V2 product surfaces", () => {
-  test("explains the public and private proof paths", async ({ page }) => {
-    await page.goto("/");
-
-    await expect(
-      page.getByRole("heading", {
-        level: 1,
-        name: "Being early used to be a story. Now it's proof.",
-      })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "A fact anyone can check." })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "A history nobody can browse." })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Before you prove it." })
-    ).toBeVisible();
-  });
-
-  test("rejects an invalid X URL before opening the proof console", async ({
-    page,
-  }) => {
-    await page.goto("/");
-
-    await page.getByLabel("X post URL").fill("https://x.com/not-a-post");
-    await page.getByRole("button", { name: "Create an X proof" }).click();
-
-    await expect(
-      page.getByRole("alert").filter({
-        hasText: "Paste the URL of the original X post.",
-      })
-    ).toHaveText("Paste the URL of the original X post.");
-    await expect(page).toHaveURL("/");
-  });
-
-  test("keeps the proof workspace explicit about X requirements", async ({
-    page,
-  }) => {
-    await page.goto("/proof");
-
-    const createProof = page.getByRole("button", { name: "Create proof" });
-    await expect(createProof).toBeDisabled();
-    await page
-      .getByLabel("Original X post")
-      .fill("https://x.com/openai/status/1234567890123456789");
-    await expect(createProof).toBeEnabled();
-    await expect(
-      page.getByText(
-        "Your account must have liked it and replied to it.",
-        { exact: false }
-      )
-    ).toBeVisible();
-  });
-
-  test("renders intentional signed-out vault and campaign states", async ({
-    page,
-  }) => {
-    await page.goto("/vault");
-    await expect(
-      page.getByRole("heading", {
-        name: "Your private discoveries live here.",
-      })
-    ).toBeVisible();
-
-    await page.goto("/campaigns");
-    await expect(
-      page.getByRole("heading", {
-        name: "Reward the people who arrived early.",
-      })
-    ).toBeVisible();
-    await expect(page.getByText("fetch failed", { exact: true })).toHaveCount(0);
-    await expect(
-      page.getByText(
-        /No campaigns are active yet|Campaign listings are temporarily unavailable/,
-      )
-    ).toBeVisible();
-  });
-
-  test("documents the atomic registry and honest trust boundary", async ({
-    page,
-  }) => {
-    await page.goto("/developers");
-
-    await expect(
-      page.getByRole("heading", { name: "Build with verified discovery." })
-    ).toBeVisible();
-    await expect(
-      page.getByText("There is no externally callable publish function", {
-        exact: false,
-      })
-    ).toBeVisible();
-    await expect(
-      page.getByText("Early attestor sees verified plaintext", {
-        exact: false,
-      })
-    ).toBeVisible();
-  });
+import { expect, test } from '@playwright/test';
+const routes = ['/', '/proof', '/vault', '/campaigns', '/developers'];
+test('public pages share the brand and do not advertise an unshipped integration', async ({ page }, testInfo) => {
+  for (const route of routes) {
+    await page.goto(route);
+    await expect(page.locator('.site-header').getByRole('link', { name: 'Early home' })).toBeVisible();
+    const body = await page.locator('main').innerText();
+    expect(body).not.toMatch(/Live proof|Start with an X post|Base Sepolia \+ Zama Sepolia|first live provider/);
+    const dimensions = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.width);
+    const font = await page.locator('main').evaluate(el => getComputedStyle(el).fontFamily);
+    expect(font).toContain('EarlyJakarta');
+    if (testInfo.project.name === 'desktop' && ['/campaigns', '/developers'].includes(route)) await page.screenshot({ path: `/tmp/early${route.replace('/', '-')}.png` });
+  }
+});
+test('landing explains recognition and launch status', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Turn early support into rewards.' })).toBeVisible();
+  await page.getByText('Can I use Early today?', { exact: true }).click();
+  await expect(page.getByText('Public verification and reward campaigns have not launched.', { exact: false })).toBeVisible();
+  await expect(page.locator('#how article')).toHaveCount(3);
+});
+test('campaigns present reward opportunities without deploying live campaigns', async ({ page }) => {
+  await page.goto('/campaigns');
+  await expect(page.getByRole('heading', { name: 'Your support opens doors.' })).toBeVisible();
+  await expect(page.locator('.cp-opportunity')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: /Deploy/ })).toHaveCount(0);
+});
+test('developer notes preserve the privacy trust boundary', async ({ page }) => {
+  await page.goto('/developers');
+  await expect(page.getByRole('heading', { name: 'Put participation to work.' })).toBeVisible();
+  await expect(page.getByText('Early attestor sees verified plaintext', { exact: false })).toBeVisible();
+});
+test('mobile menu exposes campaigns and developers', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Mobile navigation only');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(nav.getByRole('link', { name: 'Campaigns' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Developers' })).toBeVisible();
 });
 
-test.describe("responsive and accessible motion", () => {
-  test("all product routes stay inside the mobile viewport", async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "mobile", "Mobile project only.");
-
-    for (const route of routes) {
-      await page.goto(route);
-      const dimensions = await page.evaluate(() => ({
-        viewport: window.innerWidth,
-        document: document.documentElement.scrollWidth,
-      }));
-      expect(dimensions.document, `${route} overflows horizontally`).toBeLessThanOrEqual(
-        dimensions.viewport
-      );
-    }
-  });
-
-  test("mobile navigation exposes every primary destination", async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "mobile", "Mobile project only.");
-    await page.goto("/");
-
-    await page.getByRole("button", { name: "Open navigation" }).click();
-    const navigation = page.getByRole("navigation", {
-      name: "Main navigation",
-    });
-    await expect(navigation).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Vault" })).toBeVisible();
-    await expect(
-      navigation.getByRole("link", { name: "Developers" })
-    ).toBeVisible();
-  });
-
-  test("reduced motion removes entrance transforms", async ({
-    browser,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "Desktop project only.");
-    const context = await browser.newContext({
-      reducedMotion: "reduce",
-      viewport: { width: 1440, height: 1000 },
-    });
-    const page = await context.newPage();
-
-    await page.goto("/");
-    const motionState = await page.locator("#how article").evaluateAll((items) =>
-      items.map((item) => {
-        const style = getComputedStyle(item);
-        return { opacity: style.opacity, transform: style.transform };
-      })
-    );
-
-    expect(motionState).toEqual([
-      { opacity: "1", transform: "none" },
-      { opacity: "1", transform: "none" },
-      { opacity: "1", transform: "none" },
-    ]);
-    await context.close();
-  });
+test('landing uses actual app imagery, working store links and campaign-defined perks', async ({page}) => {
+  await page.goto('/');
+  const text = await page.locator('main').innerText();
+  expect(text).not.toMatch(/—|Illustrative|Examples only|Campaigns are in development|Our current private prototype|Built for early supporters|Support\. Recognition\. Opportunity\./);
+  await expect(page.locator('.el-real-reclaim-phone img')).toHaveAttribute('src', /reclaim-app-store-reference/);
+  await expect(page.getByRole('link', {name:'Download Reclaim Verifier on the App Store'})).toHaveAttribute('href','https://apps.apple.com/app/reclaim-verifier/id6503247508');
+  await expect(page.getByRole('link', {name:'Get Reclaim Verifier on Google Play'})).toHaveAttribute('href','https://play.google.com/store/apps/details?id=org.reclaimprotocol.app');
+  await expect(page.locator('.el-perk-options>div')).toHaveCount(4);
+  const footer=page.locator('footer');
+  await expect(footer.getByRole('navigation',{name:'Connect'})).toBeAttached();
+  await expect(footer.getByRole('heading',{name:'Built with'})).toHaveCount(0);
 });

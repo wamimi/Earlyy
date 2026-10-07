@@ -1,39 +1,4 @@
-import { ProofConsole } from "@/components/proof-console";
-import { SiteFooter } from "@/components/site-footer";
+import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-
-type ProofPageProps = {
-  searchParams: Promise<{
-    url?: string;
-    sessionId?: string;
-  }>;
-};
-
-export default async function ProofPage({ searchParams }: ProofPageProps) {
-  const query = await searchParams;
-
-  return (
-    <main className="product-main">
-      <SiteHeader />
-      <section className="product-page">
-        <div className="site-container">
-          <div className="product-heading">
-            <div>
-              <span>PROOF CONSOLE / X</span>
-              <h1>Turn an early moment into proof.</h1>
-              <p>
-                Paste the original X post. Your account must have liked it and
-                replied to it.
-              </p>
-            </div>
-          </div>
-          <ProofConsole
-            initialSessionId={query.sessionId ?? ""}
-            initialUrl={query.url ?? ""}
-          />
-        </div>
-      </section>
-      <SiteFooter />
-    </main>
-  );
-}
+import { SiteFooter } from "@/components/site-footer";
+export default function Page() { return <main className="product-main" id="top"><SiteHeader/><section className="product-page"><div className="site-container"><div className="product-heading"><div><span>TAKING SHAPE</span><h1>Your support deserves a record.</h1><p>We’re building verifiable records of meaningful support. Public verification has not launched yet. Explore the approach, or see how a future campaign could recognize your contribution.</p></div></div><div className="el-hero-actions"><Link className="el-primary" href="/campaigns">Explore future campaigns ↗</Link><Link className="el-secondary" href="/developers#privacy">Understand the architecture ↗</Link></div></div></section><SiteFooter/></main>; }
