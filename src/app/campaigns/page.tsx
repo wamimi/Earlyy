@@ -1,7 +1,12 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import type { Metadata } from "next";
+import { CampaignsExperience } from "@/components/campaigns-experience";
+import "@/components/campaigns.css";
+
+export const metadata: Metadata = {
+  title: "Campaigns | Early",
+  description: "Discover how your early support can unlock concert access, merchandise, and rewards from artists, brands, and communities.",
+};
+
 export default function CampaignsPage() {
-  return <main className="product-main" id="top"><SiteHeader/><section className="product-page"><div className="site-container"><div className="product-heading"><div><span>FOR CREATORS AND BUSINESSES</span><h1>Remember who helped<br/>you get here.</h1><p>Your first listeners. Your first customers. The people who showed up when it was still a leap of faith. Give them a place in what comes next.</p></div></div><div className="el-public-intro"><h2>A campaign starts<br/>with your people.</h2><p>Early’s campaign model is being developed to connect verifiable support with benefits you can actually deliver. No public campaigns are live yet. These examples show what a future pilot could look like.</p></div><div className="el-campaign-examples">{[{title:'The listeners before the sold-out show',body:'Recognize qualifying early support with a reserved ticket allocation, a listening session, or a limited release.',kind:'Artists & creators'},{title:'The customers before the first review',body:'Give your first customers product credits, anniversary access, or a place in your next launch.',kind:'Brands & businesses'},{title:'The community before the crowd',body:'Invite long-standing contributors into smaller gatherings, special experiences, or the next chapter of your project.',kind:'Communities'}].map(item=><article key={item.title}><span>{item.kind}</span><h3>{item.title}</h3><p>{item.body}</p><small>Illustrative campaign · not currently available</small></article>)}</div><section className="el-pilot" id="pilot"><h2>What would you give<br/>your first supporters?</h2><p>Start with three things: the people you want to recognize, the evidence of their support, and a benefit you can deliver. That’s the foundation of a useful pilot.</p><ol><li><strong>Who was there?</strong><span>Define the community and the moment that matters.</span></li><li><strong>What can be verified?</strong><span>Find a record that establishes the qualifying support.</span></li><li><strong>What comes next?</strong><span>Choose the reward, its availability, and how it reaches people.</span></li></ol><Link className="el-secondary" href="/developers">Explore the verification approach <ArrowUpRight size={18}/></Link></section></div></section><SiteFooter/></main>;
+  return <CampaignsExperience />;
 }
