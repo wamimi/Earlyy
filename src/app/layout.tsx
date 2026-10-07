@@ -10,8 +10,11 @@ export const metadata: Metadata = {
   title: "Early | A place in the story",
   description: "Early is building a way to turn early support into recognition, access, and opportunity.",
   icons: {
-    icon: "/early-logo.svg",
-    apple: "/early-logo.svg"
+    icon: [
+      { url: "/branding/early-icon.svg", type: "image/svg+xml" },
+      { url: "/branding/favicon-32.png", sizes: "32x32", type: "image/png" }
+    ],
+    apple: { url: "/branding/apple-touch-icon.png", sizes: "180x180", type: "image/png" }
   }
 };
 

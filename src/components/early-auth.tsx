@@ -126,8 +126,10 @@ export function EarlyAuthProvider({ children }: { children: ReactNode }) {
         loginMethods: ["email", "google", "twitter", "wallet"],
         appearance: {
           theme: "light",
-          accentColor: "#111411",
-          logo: "/early-logo.svg",
+          accentColor: "#123F32",
+          logo: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 304 100" width="180" height="60" aria-label="Early">
+            <image href="/branding/early-lockup.svg" width="304" height="100" />
+          </svg>,
           showWalletLoginFirst: false
         },
         embeddedWallets: {

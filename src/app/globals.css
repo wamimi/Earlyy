@@ -88,6 +88,11 @@ img {
   font-size: 1.08rem;
 }
 
+.early-logo { display: block; width: 122px; height: auto; flex-shrink: 0; }
+.site-header .early-logo { color: #123f32; }
+.cp-footer-brand .early-logo { width: 145px; }
+.el-footer-wordmark .early-logo { width: clamp(190px, 24vw, 300px); }
+
 .brand-mark {
   position: relative;
   display: block;
