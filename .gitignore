@@ -44,6 +44,7 @@ pnpm-debug.log*
 
 # Local Codex skills/tooling
 .agents/
+.codex/
 skills-lock.json
 
 # TypeScript
