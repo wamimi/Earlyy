@@ -12,6 +12,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:monad": "cd contracts/monad && forge test -vv",
+    "export:monad": "node scripts/export-monad-abi.mjs",
+    "test:early": "vitest run tests/early-",
+    "check:indexer": "pnpm --dir indexer/monad codegen && pnpm --dir indexer/monad typecheck",
     "build:base": "cd contracts/base && forge build",
     "export:abis": "node scripts/export-contract-abis.mjs",
     "test:app": "vitest run",
@@ -40,6 +44,8 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "@openzeppelin/contracts": "5.4.0",
     "@playwright/test": "^1.51.1",
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.17",

@@ -13,6 +13,7 @@ import {
   useWallets,
   type ConnectedWallet
 } from "@privy-io/react-auth";
+import { monadTestnet } from "@/lib/early/escrow-interface";
 
 type EthereumProvider = Awaited<ReturnType<ConnectedWallet["getEthereumProvider"]>>;
 
@@ -122,6 +123,14 @@ export function EarlyAuthProvider({ children }: { children: ReactNode }) {
     <PrivyProvider
       appId={appId}
       config={{
+        defaultChain: monadTestnet,
+        supportedChains: [monadTestnet, {
+          id: 84532, name: "Base Sepolia", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          rpcUrls: { default: { http: ["https://sepolia.base.org"] } }, testnet: true,
+        }, {
+          id: 11155111, name: "Ethereum Sepolia", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          rpcUrls: { default: { http: ["https://ethereum-sepolia-rpc.publicnode.com"] } }, testnet: true,
+        }],
         loginMethods: ["email", "google", "twitter", "wallet"],
         appearance: {
           theme: "light",

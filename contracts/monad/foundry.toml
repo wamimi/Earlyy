@@ -1,0 +1,23 @@
+[profile.default]
+network = "monad"
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+solc_version = "0.8.27"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+remappings = ["@openzeppelin/contracts/=../../node_modules/@openzeppelin/contracts/"]
+allow_paths = ["../../node_modules"]
+
+[rpc_endpoints]
+monad = "${MONAD_RPC_URL}"
+
+[fuzz]
+runs = 256
+
+[invariant]
+runs = 128
+depth = 64
+fail_on_revert = false

@@ -1,0 +1,215 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { BrowserProvider, formatEther, getAddress, parseEther } from "ethers";
+import { QRCodeSVG } from "qrcode.react";
+import { useEarlyAuth } from "./early-auth";
+import type { Evaluation, Rule, RuleRoute } from "@/lib/early/model";
+import styles from "./rewards-workspace.module.css";
+
+type RuleView = { id: string; commitment: string; creator_wallet: string; definition: Rule };
+type SessionView = { sessionId: string; requestUrl: string; expiresAt: string };
+type Tx = { to: string; data: string; value: string; chainId: string };
+type Indexed = { status: string; benefit: { funded: string; paid: string; refunded: string; remaining: string; claims: string; capacity: string } | null;
+  claims: { id: string; beneficiary: string; amount: string; transactionHash: string }[];
+  creator: { funded: string; paid: string; refunded: string; benefits: string; claims: string } | null };
+
+export function RewardsWorkspace({ deployed, initialSessionId, initialBenefitId }: { deployed: boolean; initialSessionId?: string; initialBenefitId?: string }) {
+  const auth = useEarlyAuth();
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  return <main className={styles.page}>
+    <Link href="/">← Early</Link>
+    <p className={styles.meta}>Monad testnet · Support & rewards</p>
+    <h1>Your support has a history.</h1>
+    <p>Verify an activity you choose, check a creator’s rules, and claim an available reward. Your source account and private proof stay off-chain.</p>
+    <p className={styles.notice}>Test rewards use test MON. Spotify and YouTube reward claims are awaiting device and account-ownership validation. Test MON does not represent merchandise or ticket fulfillment.</p>
+    {!deployed && <p className={styles.meta}>The reward contract is not deployed yet. You can prepare rules and support records; funding and claims will become available after setup.</p>}
+    {!hydrated || !auth.ready ? <p role="status">Loading your account…</p> : !auth.authenticated || !auth.walletAddress
+      ? <section className={styles.section}><h2>Connect your Early account</h2><p>Use your account wallet to keep support records and rewards together.</p>
+        <button className={styles.button} disabled={!auth.configured} onClick={auth.login}>Sign in to continue</button>
+        {!auth.configured && <p>Account sign-in is not configured for this environment.</p>}</section>
+      : <Workspace key={auth.walletAddress} deployed={deployed} initialSessionId={initialSessionId} initialBenefitId={initialBenefitId} />}
+  </main>;
+}
+const subscribeHydration = () => () => {};
+
+function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed: boolean; initialSessionId?: string; initialBenefitId?: string }) {
+  const auth = useEarlyAuth();
+  const [rules, setRules] = useState<RuleView[]>([]);
+  const [ruleId, setRuleId] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("Choose an opportunity or create a rule to begin.");
+  const [error, setError] = useState("");
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [session, setSession] = useState<SessionView | null>(initialSessionId ? {sessionId:initialSessionId, requestUrl:"", expiresAt:""} : null);
+  const [benefitId, setBenefitId] = useState(initialBenefitId ?? "");
+  const [access, setAccess] = useState<{team:boolean;organizations:{id:string;name:string;kind:string}[]} | null>(null);
+  const [organizationId, setOrganizationId] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [indexed, setIndexed] = useState<Indexed | null>(null);
+  const [balance, setBalance] = useState("");
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const rule = rules.find(r => r.id === ruleId);
+  const api = useCallback(async <T,>(operation: string, input: object = {}): Promise<T> => {
+    const token = await auth.getAccessToken();
+    const response = await fetch(`/api/early/${operation}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...input, wallet: auth.walletAddress }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message ?? "The request could not be completed.");
+    return data as T;
+  }, [auth]);
+  useEffect(() => {
+    let cancelled = false;
+    void api<{team:boolean;organizations:{id:string;name:string;kind:string}[]}>("access").then(value => { if (!cancelled) setAccess(value); }).catch(() => { if (!cancelled) setError("Couldn’t load workspace permissions. Creator controls remain locked."); });
+    return () => { cancelled = true; };
+  }, [api]);
+  async function run(work: () => Promise<void>) {
+    setBusy(true); setError("");
+    try { await work(); }
+    catch (e) {
+      const code = (e as { code?: unknown })?.code;
+      setError(code === 4001 || code === "ACTION_REJECTED" ? "You declined the wallet request. No payment was confirmed." : e instanceof Error ? e.message : "The action could not be completed.");
+    } finally { setBusy(false); }
+  }
+  async function loadRules() {
+    const result = await api<{ rules: RuleView[] }>("list-rules", { includeDrafts: access?.team === true });setRules(result.rules);
+    if (!ruleId && result.rules[0]) setRuleId(result.rules[0].id);
+    setStatus(result.rules.length ? "Choose an opportunity to check your support." : "No rules yet. A creator can prepare the first one below.");
+  }
+  async function refreshIndexed(id = benefitId, hash = txHash) {
+    if (!id) return;
+    const data = await api<Indexed>("indexed", { benefitId: id, ...(hash ? { txHash: hash } : {}) });setIndexed(data);
+    if (data.status === "syncing") setStatus("Payment confirmed. The activity feed is still syncing.");
+    if (data.status === "indexed") setStatus("The activity feed is up to date.");
+  }
+  async function reconcile(hash = txHash) {
+    const receipt = await api<{ status: string; events?: { benefitId: string }[] }>("reconcile", { txHash: hash });
+    if (receipt.status !== "confirmed") { setStatus("Transaction submitted. Waiting for receipt confirmation."); return; }
+    const id = receipt.events?.[0]?.benefitId ?? benefitId;
+    setBenefitId(id);setStatus("Transaction confirmed. Checking the activity feed…");await refreshIndexed(id, hash);
+  }
+  async function transact(kind: "create" | "fund" | "claim" | "refund", amountMon = "0") {
+    setStatus("Checking your account, benefit terms and network…");
+    const prepared = await api<{ transaction: Tx; authorizationExpiry?: string }>("transaction", {
+      action: kind, ruleId, benefitId, amountWei: parseEther(amountMon).toString(),
+    });
+    if (!active.current) return;
+    await auth.switchChain(10143);
+    const provider = new BrowserProvider(await auth.getEthereumProvider());
+    if ((await provider.getNetwork()).chainId !== BigInt(10143)) throw new Error("Switch to Monad testnet to continue.");
+    const signer = await provider.getSigner();
+    if (!active.current || getAddress(await signer.getAddress()) !== getAddress(auth.walletAddress)) throw new Error("Wallet changed. Reopen the reward and try again.");
+    if (prepared.authorizationExpiry && BigInt(prepared.authorizationExpiry) <= BigInt(Math.floor(Date.now()/1000))) throw new Error("Authorization expired. Click claim again to refresh it.");
+    const tx = { to: prepared.transaction.to, data: prepared.transaction.data, value: BigInt(prepared.transaction.value) };
+    const [gas, fee, funds] = await Promise.all([signer.estimateGas(tx), provider.getFeeData(), provider.getBalance(auth.walletAddress)]);
+    setBalance(formatEther(funds));
+    if (funds < tx.value + gas * (fee.maxFeePerGas ?? fee.gasPrice ?? BigInt(0))) throw new Error("This wallet needs more test MON for the payment and gas.");
+    if (!active.current) return;
+    setStatus(`Confirm in your wallet. Estimated gas: ${formatEther(gas * (fee.maxFeePerGas ?? fee.gasPrice ?? BigInt(0)))} MON.`);
+    const sent = await signer.sendTransaction(tx);setTxHash(sent.hash);setStatus("Transaction submitted. Waiting for receipt confirmation…");
+    const receipt = await sent.wait(2, 90000);
+    if (!receipt || receipt.status !== 1) throw new Error("No successful receipt yet. Check transaction status before retrying.");
+    await reconcile(sent.hash);
+  }
+  return <>
+    <p className={styles.wallet}>Account wallet: {auth.walletAddress}{balance && ` · ${balance} test MON`}</p>
+    <div className={styles.status} role="status" aria-live="polite">{status}</div>
+    {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
+    <section className={styles.section}>
+      <h2>Check your support</h2>
+      <div className={styles.row}><label className={styles.field}>Opportunity<select value={ruleId} onChange={e => { setRuleId(e.target.value);setEvaluation(null);setSession(null);setConsent(false); }}>
+        <option value="">Choose an opportunity</option>{rules.map(r => <option key={r.id} value={r.id}>{r.definition.title}</option>)}</select></label>
+        <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(loadRules)}>Load opportunities</button></div>
+      {rule && <>
+        <p>Any accepted activity can qualify. This rule requires {rule.definition.minimumDistinctEvents} distinct event(s) across {rule.definition.minimumDistinctDays} UTC date(s).</p>
+        <label className={styles.consent}><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I consent to checking my saved support records and proving the activity I select. My full platform history will not be made public.</label>
+        <button className={styles.button} disabled={busy || !consent} onClick={() => run(async () => {
+          const result = await api<{ evaluation: Evaluation }>("inspect", { ruleId, consent });setEvaluation(result.evaluation);setStatus(result.evaluation.reason);
+        })}>Check saved records</button>
+        {evaluation && <p>{evaluation.status.replaceAll("_", " ")}: {evaluation.reason}</p>}
+        {rule.definition.alternatives.map((selection, i) => <div key={`${selection.route}-${i}`} className={styles.route}>
+          <p><strong>{selection.route === "spotify_saved_track" ? "Spotify saved track" : "YouTube subscription"}</strong><br />{selection.targetId}<br />Before {selection.cutoff} (UTC)</p>
+          <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !consent || evaluation?.status === "eligible"} onClick={() => run(async () => {
+            const result = await api<SessionView>("sessions", { selection, consent });setSession(result);setStatus("Continue in Reclaim Verifier to find a matching activity. If no record is available, try another accepted route.");
+          })}>Verify {selection.route === "spotify_saved_track" ? "Spotify" : "YouTube"} activity</button>
+        </div>)}
+      </>}
+      {session && <div>
+        {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
+        <p><a href={session.requestUrl} target="_blank" rel="noreferrer">Open Reclaim Verifier</a> · Expires {new Date(session.expiresAt).toLocaleTimeString()}</p></>}
+        <button className={styles.button} disabled={busy} onClick={() => run(async () => {
+          const result = await api<{ status: string }>("session-status", { sessionId: session.sessionId });setStatus(`Proof ${result.status.replaceAll("_", " ")}.`);
+          if (result.status === "verified" && ruleId) { const e = await api<Evaluation>("evaluate", { ruleId });setEvaluation(e);setStatus(e.reason); }
+        })}>Check proof status</button>
+      </div>}
+      <details className={styles.route}><summary>Save support before an opportunity exists</summary>
+        <StandaloneProof busy={busy} start={selection => run(async () => {setSession(await api<SessionView>("sessions", { selection, consent: true }));setStatus("Verify only the selected activity in Reclaim Verifier.");})} />
+      </details>
+    </section>
+    <section className={styles.section}>
+      <h2>Benefit activity</h2><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
+      <div className={styles.row}><label className={styles.field}>Benefit ID<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label>
+        <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => refreshIndexed())}>Refresh activity</button>
+        <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"))}>Check eligibility & claim</button></div>
+      <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("refund"))}>Refund expired benefit (funding wallet only)</button>
+      {txHash && <p><a href={`https://testnet.monadvision.com/tx/${txHash}`} target="_blank" rel="noreferrer">View transaction</a> · <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(() => reconcile())}>Check confirmation</button></p>}
+      {indexed && <p>Activity feed: {indexed.status.replaceAll("_", " ")}. {indexed.status === "unavailable" || indexed.status === "not_configured" ? "This does not mean a confirmed payment failed." : ""}</p>}
+      {indexed?.benefit && <p>Funded {formatEther(indexed.benefit.funded)} MON · Paid {formatEther(indexed.benefit.paid)} MON · Remaining {formatEther(indexed.benefit.remaining)} MON · {BigInt(indexed.benefit.capacity) - BigInt(indexed.benefit.claims)} places left</p>}
+      {indexed?.creator && <p>Creator totals: {indexed.creator.benefits} benefits · {indexed.creator.claims} claims · {formatEther(indexed.creator.paid)} MON paid · {formatEther(indexed.creator.refunded)} MON refunded</p>}
+      {indexed?.claims.length ? <div className={styles.scroll}><table className={styles.table}><caption>Confirmed indexed claims</caption><thead><tr><th>Recipient</th><th>Test MON</th><th>Transaction</th></tr></thead><tbody>{indexed.claims.map(c => <tr key={c.id}><td>{c.beneficiary}</td><td>{formatEther(c.amount)}</td><td><a href={`https://testnet.monadvision.com/tx/${c.transactionHash}`}>View</a></td></tr>)}</tbody></table></div> : null}
+    </section>
+    {access?.team ? <section className={styles.section}><h2>Early campaign management</h2><p>Define immutable reward terms. Funding can be added during the claim window; unclaimed funds can be refunded after it closes.</p>
+      <RuleForm disabled={busy} create={definition => run(async () => {
+        const saved = await api<RuleView>("rules", { rule: definition });await loadRules();setRuleId(saved.id);setStatus("Rule saved. Review the terms before funding the benefit.");
+      })} />
+      <div className={styles.row}><label className={styles.field}>Approved partner<select value={organizationId} onChange={e => setOrganizationId(e.target.value)}><option value="">Choose partner</option>{access.organizations.map(o => <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>)}</select></label><button className={styles.button} disabled={busy || !rule || !organizationId} onClick={() => run(async () => { await api("publish-rule", {ruleId,organizationId});setStatus("Campaign published to the fan dashboard."); })}>Publish campaign</button></div>
+      <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount))} />
+    </section> : <section className={styles.section}><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Work with Early</Link></section>}
+  </>;
+}
+
+function StandaloneProof({ busy, start }: { busy: boolean; start: (r: RuleRoute) => void }) {
+  const [route, setRoute] = useState<RuleRoute["route"]>("spotify_saved_track");
+  const [consent, setConsent] = useState(false);
+  return <form onSubmit={e => {e.preventDefault();const data = new FormData(e.currentTarget);start({route,targetId:String(data.get("target")),cutoff:new Date().toISOString()});}}>
+    <p>Choose a target to preserve a support record now. A future campaign can evaluate it with your consent.</p>
+    <div className={styles.row}><label className={styles.field}>Platform<select value={route} onChange={e => setRoute(e.target.value as RuleRoute["route"])}><option value="spotify_saved_track">Spotify</option><option value="youtube_subscription">YouTube</option></select></label>
+      <label className={styles.field}>Target ID<input name="target" required placeholder={route === "spotify_saved_track" ? "spotify:artist:… or spotify:track:…" : "UC… channel ID"} /></label></div>
+    <label className={styles.consent}><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I consent to verifying and privately saving this selected activity.</label>
+    <button className={styles.button} disabled={busy || !consent}>Save a support record</button>
+  </form>;
+}
+
+function RuleForm({ disabled, create }: { disabled: boolean; create: (r: Rule) => void }) {
+  const [routes, setRoutes] = useState<RuleRoute[]>([{ route: "spotify_saved_track", targetId: "", cutoff: "" }]);
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); const f = new FormData(e.currentTarget);
+    create({ version: Number(f.get("version")), title: String(f.get("title")), alternatives: routes,
+      payoutWei: parseEther(String(f.get("payout"))).toString(), capacity: Number(f.get("capacity")),
+      claimExpiry: Math.floor(Date.parse(`${f.get("expiry")}Z`) / 1000), minimumDistinctEvents: Number(f.get("events")), minimumDistinctDays: Number(f.get("days")) });
+  }
+  return <form onSubmit={submit}>
+    <div className={styles.row}><label className={styles.field}>Opportunity name<input name="title" required maxLength={100} /></label><label className={styles.field}>Claim window closes (UTC)<input type="datetime-local" name="expiry" required /></label></div>
+    <label className={styles.field}>Rule version<input name="version" type="number" min="1" max="2147483647" defaultValue="1" required /></label>
+    {routes.map((r, i) => <div key={i} className={styles.route}><div className={styles.row}>
+      <label className={styles.field}>Accepted activity<select value={r.route} onChange={e => setRoutes(routes.map((v,j) => j===i ? {...v, route:e.target.value as RuleRoute["route"], targetId:""} : v))}><option value="spotify_saved_track">Spotify track save</option><option value="youtube_subscription">YouTube subscription</option></select></label>
+      <label className={styles.field}>Target ID<input required value={r.targetId} onChange={e => setRoutes(routes.map((v,j)=>j===i?{...v,targetId:e.target.value}:v))} placeholder={r.route === "spotify_saved_track" ? "spotify:artist:… or spotify:track:…" : "UC… channel ID"} /></label>
+      <label className={styles.field}>Activity before (UTC)<input type="datetime-local" required onChange={e => setRoutes(routes.map((v,j)=>j===i?{...v,cutoff:e.target.value?`${e.target.value}:00Z`:""}:v))} /></label>
+    </div>{routes.length>1 && <button className={`${styles.button} ${styles.secondary}`} type="button" onClick={()=>setRoutes(routes.filter((_,j)=>j!==i))}>Remove alternative</button>}</div>)}
+    <p><button className={`${styles.button} ${styles.secondary}`} type="button" disabled={routes.length>=8} onClick={()=>setRoutes([...routes,{route:"youtube_subscription",targetId:"",cutoff:""}])}>Add alternative activity</button></p>
+    <div className={styles.row}><label className={styles.field}>Payout per person (test MON)<input name="payout" type="number" step="0.000001" min="0.000001" defaultValue="0.01" required /></label><label className={styles.field}>Capacity<input name="capacity" type="number" min="1" max="1000000" defaultValue="10" required /></label></div>
+    <div className={styles.row}><label className={styles.field}>Distinct events required<input name="events" type="number" min="1" max="100" defaultValue="1" required /></label><label className={styles.field}>Distinct UTC dates required<input name="days" type="number" min="1" max="100" defaultValue="1" required /></label></div>
+    <p className={styles.meta}>Repeated copies of one event never increase support. Repeat-support collection coverage remains experimental.</p>
+    <button className={styles.button} disabled={disabled}>Save immutable rule</button>
+  </form>;
+}
+function FundingForm({ disabled, selectedRule, benefitSelected, transact }: { disabled: boolean; selectedRule: boolean; benefitSelected: boolean; transact: (kind:"create"|"fund"|"refund",amount?:string)=>void }) {
+  const [amount,setAmount]=useState("0.1");
+  return <div className={styles.route}><h3>Fund or close a benefit</h3><div className={styles.row}><label className={styles.field}>Funding amount (test MON)<input type="number" min="0" step="0.000001" value={amount} onChange={e=>setAmount(e.target.value)} /></label>
+    <button className={styles.button} disabled={disabled || !selectedRule} onClick={()=>transact("create",amount)}>Create & fund selected rule</button>
+    <button className={`${styles.button} ${styles.secondary}`} disabled={disabled || !benefitSelected} onClick={()=>transact("fund",amount)}>Add funding</button>
+    <button className={`${styles.button} ${styles.secondary}`} disabled={disabled || !benefitSelected} onClick={()=>transact("refund")}>Refund after expiry</button></div></div>;
+}

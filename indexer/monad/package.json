@@ -1,0 +1,14 @@
+{
+  "name": "early-monad-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "ENVIO_CONFIG=config.test.yaml node --import tsx --test src/handlers.test.ts",
+    "codegen": "envio codegen",
+    "typecheck": "tsc --noEmit",
+    "dev": "node ../../scripts/monad-indexer.mjs dev"
+  },
+  "dependencies": { "envio": "3.14.0" },
+  "devDependencies": { "typescript": "6.0.3", "@types/node": "26.0.1", "tsx": "4.20.6" }
+}

@@ -1,0 +1,22 @@
+name: early-monad
+description: Native test MON benefit funding, payouts and refunds
+rollback_on_reorg: true
+contracts:
+  - name: EarlyBenefitEscrow
+    handler: src/handlers.ts
+    abi_file_path: abis/EarlyBenefitEscrow.json
+    events:
+      - event: BenefitCreated
+      - event: BenefitFunded
+      - event: BenefitClaimed
+      - event: BenefitClosed
+chains:
+  - id: 10143
+    rpc:
+      - url: https://testnet-rpc.monad.xyz
+        for: sync
+    start_block: 0
+    contracts:
+      - name: EarlyBenefitEscrow
+        # Intentionally inactive; the local launcher requires actual deployment outputs.
+        address: []

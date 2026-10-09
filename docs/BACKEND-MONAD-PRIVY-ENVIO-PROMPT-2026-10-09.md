@@ -25,6 +25,21 @@ Reference-only files already available under `/Users/xiaomao/.codex/skills/solid
 - Keep source ownership checks and signature issuance strict: a perfectly correct contract still loses funds if a backend issues fraudulent authorizations. Bind authenticated sessions and durable issuance to on-chain nullifiers; test the whole trust boundary.
 - Document residual trust in the eligibility signer and administrative powers. Security-informed construction and passing tests are not an independent audit or a guarantee of safety. Keep this delivery on testnet; do not claim readiness to custody real creator funds.
 
+## Verified local network setup — October 9 update
+
+Public configuration is now populated directly in `.env.local`: `MONAD_RPC_URL` and `NEXT_PUBLIC_MONAD_RPC_URL` = `https://testnet-rpc.monad.xyz`, `NEXT_PUBLIC_MONAD_CHAIN_ID` = `10143`, `NEXT_PUBLIC_MONAD_EXPLORER_URL` = `https://testnet.monadvision.com`. RPC `eth_chainId` returned `0x279f` (10143). Only the public no-key RPC may be exposed to the browser. The four route-specific provider ID/version values are also populated. No need to ask the user to copy these from the worksheet. Empty Envio endpoint and escrow-address entries are future outputs, not failures of setup.
+
+Foundry is REQUIRED for Solidity development, tests and deployment tooling. The installed forge was 1.2.3; the current official Monad guide specifies Foundry >=1.8.0 and `network = "monad"` in the Monad project's foundry.toml. Use a compatible updated version before that configuration; do not reuse obsolete Base/Zama settings or overwrite legacy project configs. User creates the encrypted deployer keystore named `early-monad-deployer`; `MONAD_DEPLOYER_ACCOUNT` is already configured. Use `--account early-monad-deployer` when a later deployment is explicitly authorized, with interactive password handling. Do not require its private key in env or read its keystore password. This is separate from the backend eligibility signer.
+
+Direct official guides:
+- Foundry on Monad: https://docs.monad.xyz/tooling-and-infra/toolkits/foundry
+- Foundry deployment: https://docs.monad.xyz/guides/deploy-smart-contract/foundry
+- Foundry contract verification: https://docs.monad.xyz/guides/verify-smart-contract/foundry
+- Network values: https://docs.monad.xyz/developer-essentials/testnet
+- Test MON faucet: https://faucet.monad.xyz
+
+For Envio, use the configured Monad RPC as the documented RPC ingestion fallback if no HyperSync token/source is available. Verify compatibility in the selected HyperIndex version. Do not invent a deployed GraphQL URL or populate another application's endpoint. Wire local environment loading explicitly for the indexer. ENVIO_API_TOKEN is the one external token the user may supply for local HyperSync; its presence must not block pure tests/RPC-only development.
+
 ## Read first and understand the actual state
 
 Read applicable AGENTS.md, `docs/PLAN-2026-10-09.md`, the top/current sections of `docs/HANDOFF-2026-10-08.md`, `docs/PROVIDER-IMPLEMENTATION-2026-10-09.md`, `docs/PROVIDER-CAPABILITIES.md`, and package.json. Later updates supersede historical experiment notes.

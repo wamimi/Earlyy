@@ -14,7 +14,7 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com",
   "frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com",
-  `connect-src 'self' https://auth.privy.io https://*.rpc.privy.systems https://explorer-api.walletconnect.com https://challenges.cloudflare.com wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org${development ? " ws://localhost:* ws://127.0.0.1:*" : ""}`,
+  `connect-src 'self' https://auth.privy.io https://*.rpc.privy.systems https://testnet-rpc.monad.xyz https://sepolia.base.org https://explorer-api.walletconnect.com https://challenges.cloudflare.com wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org${development ? " ws://localhost:* ws://127.0.0.1:*" : ""}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "media-src 'self' blob:",

@@ -1,0 +1,23 @@
+# Local synthetic-event tests only. This address is not a deployment.
+name: early-monad-test
+rollback_on_reorg: true
+contracts:
+  - name: EarlyBenefitEscrow
+    handler: src/handlers.ts
+    abi_file_path: abis/EarlyBenefitEscrow.json
+    events:
+      - event: BenefitCreated
+      - event: BenefitFunded
+      - event: BenefitClaimed
+      - event: BenefitClosed
+chains:
+  - id: 10143
+    hypersync_config:
+      url: https://10143.hypersync.xyz
+    rpc:
+      - url: https://testnet-rpc.monad.xyz
+        for: fallback
+    start_block: 0
+    contracts:
+      - name: EarlyBenefitEscrow
+        address: ["0x0000000000000000000000000000000000000003"]
