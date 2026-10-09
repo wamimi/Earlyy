@@ -17,7 +17,7 @@ test('landing explains recognition and launch status', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Turn early support into rewards.' })).toBeVisible();
   await page.getByText('Can I use Early today?', { exact: true }).click();
-  await expect(page.getByText('Public verification and reward campaigns have not launched.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Join the waitlist to hear when we launch', { exact: false })).toBeVisible();
   await expect(page.locator('#how article')).toHaveCount(3);
 });
 test('campaigns present reward opportunities without deploying live campaigns', async ({ page }) => {
@@ -26,10 +26,10 @@ test('campaigns present reward opportunities without deploying live campaigns', 
   await expect(page.locator('.cp-opportunity')).toHaveCount(3);
   await expect(page.getByRole('button', { name: /Deploy/ })).toHaveCount(0);
 });
-test('developer notes preserve the privacy trust boundary', async ({ page }) => {
+test('developer page explains verification and prelaunch access', async ({ page }) => {
   await page.goto('/developers');
   await expect(page.getByRole('heading', { name: 'Put participation to work.' })).toBeVisible();
-  await expect(page.getByText('Early attestor sees verified plaintext', { exact: false })).toBeVisible();
+  await expect(page.getByText('Production APIs and the final privacy architecture are in development.', { exact: false })).toBeVisible();
 });
 test('mobile menu exposes campaigns and developers', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Mobile navigation only');

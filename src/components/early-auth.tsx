@@ -50,7 +50,7 @@ const EarlyAuthContext = createContext<EarlyAuthValue>(missingAuth);
 
 function PrivyBridge({ children }: { children: ReactNode }) {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
-  const { ready: walletsReady, wallets } = useWallets();
+  const { wallets } = useWallets();
   const activeWallet = wallets.find((wallet) => wallet.walletClientType === "privy") ?? wallets[0];
   const email = user?.email?.address;
   const socialName = user?.google?.name ?? user?.twitter?.name;
@@ -75,7 +75,7 @@ function PrivyBridge({ children }: { children: ReactNode }) {
   const value = useMemo<EarlyAuthValue>(
     () => ({
       configured: true,
-      ready: ready && walletsReady,
+      ready,
       authenticated,
       displayName:
         socialName ||
@@ -101,7 +101,6 @@ function PrivyBridge({ children }: { children: ReactNode }) {
       readEthereumProvider,
       ready,
       socialName,
-      walletsReady,
     ]
   );
 

@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
 
-test('brand campaign choices carry into a downloadable brief', async ({ page }, testInfo) => {
+test('brand campaign preview leads to the brand waitlist', async ({ page }, testInfo) => {
   await page.goto('/brands');
   await expect(page.getByRole('heading', {name:'Reward the people behind your growth.'})).toBeVisible();
   await expect(page.locator('.br-reward-descriptions h3')).toHaveCount(4);
@@ -9,28 +8,8 @@ test('brand campaign choices carry into a downloadable brief', async ({ page }, 
   await page.getByLabel('Support before').fill('2026-11-01');
   await page.getByRole('radio', {name:'Products', exact:true}).check();
   await expect(page.getByRole('radio', {name:'Ship a product'})).toBeChecked();
-  await page.getByRole('button', {name:'Build your brief'}).click();
-  const dialog = page.getByRole('dialog', {name:'Start with your people.'});
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('dl')).toContainText('Stream or listen');
-  await expect(dialog.locator('dl')).toContainText('2026-11-01');
-  await expect(dialog.locator('dl')).toContainText('Products');
-  await expect(dialog.locator('dl')).toContainText('Ship a product');
-  await dialog.getByLabel('Artist, brand, or community').fill('First listeners club');
-  await dialog.getByLabel('Reward details and availability').fill('100 limited shirts for qualifying early listeners.');
-  const downloadPromise = page.waitForEvent('download');
-  await dialog.getByRole('button', {name:'Download campaign brief'}).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('early-brand-campaign-brief.md');
-  const path = await download.path();
-  const content = await readFile(path!, 'utf8');
-  expect(content).toContain('First listeners club');
-  expect(content).toContain('Stream or listen');
-  expect(content).toContain('100 limited shirts');
-  await expect(dialog.getByRole('status')).toHaveText('Your campaign brief is ready.');
-  await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
-  await expect(page.getByRole('button', {name:'Build your brief'})).toBeFocused();
+  await expect(page.getByRole('link', {name:'Campaign planning coming soon'})).toHaveAttribute('href', '/waitlist?interest=brand');
+  await expect(page.getByRole('link', {name:'Join the brand waitlist'}).first()).toHaveAttribute('href', '/waitlist?interest=brand');
   await page.getByRole('radio', {name:'Cash rewards', exact:true}).check();
   await expect(page.getByRole('radio', {name:'Send a payout'})).toBeChecked();
   await page.getByRole('radio', {name:'Tickets', exact:true}).check();

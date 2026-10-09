@@ -18,11 +18,10 @@ test('developer flow, use cases, documentation and privacy work', async ({page, 
   await expect(page.locator('#usecase-0')).not.toBeVisible();
   await expect(page.locator('#usecase-1')).toBeVisible();
   await loyalty.click();
-  await page.getByRole('link', {name:'Explore docs', exact:true}).click();
-  await expect(page.getByRole('heading', {name:'Everything you need to start building.'})).toBeInViewport();
+  await expect(page.getByRole('heading', {name:'Developer docs. Coming soon.'})).toBeAttached();
   await expect(page.locator('.dv-doc-resources a')).toHaveCount(4);
-  for(const link of await page.locator('.dv-doc-resources a').all()) expect(await link.getAttribute('href')).toMatch(/^\/developers\/docs#/);
-  await expect(page.locator('#privacy')).toContainText('Early attestor sees verified plaintext before encryption');
+  for(const link of await page.locator('.dv-doc-resources a').all()) expect(await link.getAttribute('href')).toBe('/waitlist?interest=developer');
+  await expect(page.locator('#privacy')).toContainText('Reclaim’s zkTLS');
   await page.goto('/developers');
   await page.evaluate(async () => {const images=Array.from(document.images);images.forEach(image=>{image.loading='eager'});await Promise.all(images.map(image=>image.decode().catch(()=>{})));});
   expect(await page.locator('.dv-background').evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);
@@ -36,14 +35,8 @@ test('developer flow, use cases, documentation and privacy work', async ({page, 
 });
 
 
-test('local developer references open real sections', async ({page}) => {
-  await page.goto('/developers');
-  await page.locator('.dv-doc-resources').getByRole('link', {name:/Claim schemas/}).click();
-  await expect(page).toHaveURL(/developers\/docs#schemas/);
-  await expect(page.getByRole('heading', {name:'A record your product can verify.'})).toBeVisible();
-  await page.getByRole('navigation', {name:'Reference sections'}).getByRole('link', {name:'Quickstart'}).click();
-  await expect(page.getByRole('heading', {name:'Run the implementation locally.'})).toBeInViewport();
-  await page.addStyleTag({content:'nextjs-portal{display:none!important}'});
-  await page.screenshot({path:`/tmp/early-developer-reference-${test.info().project.name}.png`,fullPage:true});
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+test('developer documentation has an honest coming soon page', async ({page}) => {
+  await page.goto('/developers/docs');
+  await expect(page.getByRole('heading', {name:'Documentation is coming soon.'})).toBeVisible();
+  await expect(page.getByRole('link', {name:'Join the developer waitlist'})).toHaveAttribute('href','/waitlist?interest=developer');
 });

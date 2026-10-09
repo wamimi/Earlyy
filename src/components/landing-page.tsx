@@ -13,19 +13,19 @@ const faqs = [
   { question: "Do I have to be the very first?", answer: "No. Each campaign defines what being early means and which activity qualifies." },
   { question: "Can past support count?", answer: "Yes, where a source still holds a record we can verify. Coverage will depend on the integrations available at launch." },
   { question: "What could I receive?", answer: "Tickets, exclusive access, member benefits, product credits, or financial rewards offered by a campaign. Benefits vary; verified support does not guarantee a payout or ownership." },
-  { question: "Can I use Early today?", answer: "Early is in development. Public verification and reward campaigns have not launched. We’re refining the experience before opening access." },
-  { question: "What data is shared?", answer: "You approve the facts needed to verify your support. Reclaim proofs do not share your login credentials with Early. Selected facts may be disclosed; verification does not guarantee anonymity." },
+  { question: "Can I use Early today?", answer: "Early is in active development. Join the waitlist to hear when we launch and open access for supporters and creators." },
+  { question: "What data is shared?", answer: "Early is being built with Reclaim’s zkTLS to prove specific facts from supported accounts without sharing your login credentials. You review the required facts before sharing them. We do not ask for your entire account history." },
 ];
 export function LandingPage() {
   return <main className="early-landing">
     <SiteHeader />
-    <ImagePortalHero><div className="el-hero-actions"><Link className="el-primary" href="#culture">Explore Early <ArrowUpRight size={18} /></Link><Link className="el-secondary" href="/campaigns">For creators & businesses <ArrowUpRight size={16} /></Link></div></ImagePortalHero>
+    <ImagePortalHero><div className="el-hero-actions"><Link className="el-primary" href="#culture">Explore Early <ArrowUpRight size={18} /></Link><Link className="el-secondary" href="/waitlist?interest=creator">For creators & businesses <ArrowUpRight size={16} /></Link></div></ImagePortalHero>
     <CultureJourney/>
     <LandingSteps />
-    <section className="el-privacy el-privacy-simple" id="privacy"><div className="el-container"><ShieldCheck size={34}/><h2>Your proof.<br />Your privacy.</h2><p>Reclaim’s zero-knowledge proofs verify the required facts without sharing your login credentials with Early. You approve what gets shared.</p><Link href="/developers#privacy">How privacy works <ArrowUpRight size={17}/></Link></div></section>
+    <section className="el-privacy el-privacy-simple" id="privacy"><div className="el-container"><ShieldCheck size={34}/><h2>Your proof.<br />Your privacy.</h2><p>Reclaim’s zkTLS proves the facts needed to verify your support without sharing your login credentials with Early. You review what gets shared.</p><Link href="/developers#privacy">How privacy works <ArrowUpRight size={17}/></Link></div></section>
     <section className="el-teams el-container" id="teams"><div className="el-value-heading"><h2>Value for both sides.</h2><Link href="/campaigns">Explore campaigns <ArrowUpRight size={18}/></Link></div><div className="el-value-rows">{[{name:'Supporters',copy:'Make your early support count toward access and rewards.'},{name:'Creators',copy:'Find your first fans. Build closer relationships.'},{name:'Businesses',copy:'Recognize early customers. Give them a reason to return.'}].map(item=><article key={item.name}><h3>{item.name}</h3><p>{item.copy}</p></article>)}</div></section>
     <section className="el-faq el-container" id="faq"><h2>Frequently asked questions</h2><div>{faqs.map(faq=><details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div></section>
-    <section className="el-closing el-container"><div><h2>Been there since<br />the beginning?</h2><p>Make your support count.</p><Link className="el-primary" href="/campaigns">Explore Early <ArrowUpRight size={20}/></Link></div><Image src="/early-birds.jpg" alt="Watercolour birds gathered together among green branches" width={1408} height={1767} sizes="(max-width: 760px) 90vw, 45vw"/></section>
+    <section className="el-closing el-container"><div><h2>Been there since<br />the beginning?</h2><p>Make your support count.</p><Link className="el-primary" href="/waitlist">Join the waitlist <ArrowUpRight size={20}/></Link></div><Image src="/early-birds.jpg" alt="Watercolour birds gathered together among green branches" width={1408} height={1767} sizes="(max-width: 760px) 90vw, 45vw"/></section>
     <LandingFooter/>
   </main>;
 }

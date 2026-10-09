@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { useEarlyAuth } from "./early-auth";
 import { EarlyLogo } from "./early-logo";
 
 const links = [
@@ -17,7 +16,6 @@ const links = [
 ] as const;
 
 export function SiteHeader({ action }: { action?: ReactNode } = {}) {
-  const auth = useEarlyAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -36,31 +34,7 @@ export function SiteHeader({ action }: { action?: ReactNode } = {}) {
       </nav>
 
       <div className="header-actions">
-        {action ?? (auth.authenticated ? (
-          <>
-            <Link className="button button-small button-dark" href="/campaigns">
-              Explore Early
-            </Link>
-            <button
-              className="icon-button"
-              type="button"
-              onClick={() => void auth.logout()}
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOut size={18} />
-            </button>
-          </>
-        ) : (
-          <button
-            className="button button-small button-dark"
-            type="button"
-            onClick={auth.login}
-            disabled={!auth.ready}
-          >
-            {auth.ready ? "Sign in" : "Loading"}
-          </button>
-        ))}
+        {action ?? <Link className="button button-small button-dark" href="/waitlist">Join the waitlist</Link>}
         <button
           className="menu-button"
           type="button"
