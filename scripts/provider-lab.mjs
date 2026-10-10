@@ -64,7 +64,12 @@ try {
     if (selected[5].length !== 115) throw new Error('Unexpected event token framing.');
     provider = { ...provider, ...youtubeSubscriptionRecipe({ timestamp: String(selected[4]), channelId: selected[9][3].split('/').at(-1) }) };
   }
-  if (process.env.EARLY_PROOF_GEO !== 'direct') provider.geoLocation = proofGeoLocation;
+  const proofGeo = process.env.EARLY_PROOF_GEO ?? proofGeoLocation;
+  if (proofGeo !== 'direct' && !/^[A-Z]{2}$/.test(proofGeo)) throw new Error('Invalid diagnostic proof country.');
+  if (proofGeo !== 'direct') provider.geoLocation = proofGeo;
+  const protocol = process.env.EARLY_PROOF_TLS;
+  if (protocol && !['TLS1_2', 'TLS1_3'].includes(protocol)) throw new Error('Invalid diagnostic TLS version.');
+  if (protocol) provider.additionalClientOptions = { supportedProtocolVersions: [protocol] };
   // Selector-only mode is diagnostic and must never be used for eligibility.
   const { secrets } = splitSecrets(stripTransportHeaders(request.requestHeaders));
   if (boundEvent) {
