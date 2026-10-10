@@ -88,7 +88,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   async function reconcile(hash = txHash) {
     const receipt = await api<{ status: string; events?: { benefitId: string }[] }>("reconcile", { txHash: hash });
     if (receipt.status !== "confirmed") { setStatus("Transaction submitted. Waiting for receipt confirmation."); return; }
-    const id = receipt.events?.[0]?.benefitId ?? benefitId;
+    const id = receipt.events?.find(event => event.benefitId === benefitId)?.benefitId ?? receipt.events?.[0]?.benefitId ?? benefitId;
     setBenefitId(id);setStatus("Transaction confirmed. Checking the activity feed…");await refreshIndexed(id, hash);
   }
   async function transact(kind: "create" | "fund" | "claim" | "refund", amountMon = "0") {
@@ -104,6 +104,23 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
     if (!active.current || getAddress(await signer.getAddress()) !== getAddress(auth.walletAddress)) throw new Error("Wallet changed. Reopen the reward and try again.");
     if (prepared.authorizationExpiry && BigInt(prepared.authorizationExpiry) <= BigInt(Math.floor(Date.now()/1000))) throw new Error("Authorization expired. Click claim again to refresh it.");
     const tx = { to: prepared.transaction.to, data: prepared.transaction.data, value: BigInt(prepared.transaction.value) };
+    if (kind === "claim" && auth.canSponsorClaims) {
+      setStatus("Approve your reward claim. Requesting sponsored gas through Privy…");
+      let hash: string;
+      try {
+        ({ hash } = await auth.sponsorClaim(prepared.transaction));
+      } catch (cause) {
+        const code = (cause as { code?: unknown })?.code;
+        if (code === 4001 || code === "ACTION_REJECTED") throw cause;
+        throw new Error("The sponsored claim could not be submitted or confirmed. Check your wallet activity before retrying. Early will not switch to charging you gas automatically.");
+      }
+      if (!active.current) return;
+      setTxHash(hash);setStatus("Claim submitted. Waiting for receipt confirmation…");
+      const receipt = await provider.waitForTransaction(hash, 2, 90000);
+      if (!receipt || receipt.status !== 1) throw new Error("No successful receipt yet. Check transaction status before retrying.");
+      if (active.current) await reconcile(hash);
+      return;
+    }
     const [gas, fee, funds] = await Promise.all([signer.estimateGas(tx), provider.getFeeData(), provider.getBalance(auth.walletAddress)]);
     setBalance(formatEther(funds));
     if (funds < tx.value + gas * (fee.maxFeePerGas ?? fee.gasPrice ?? BigInt(0))) throw new Error("This wallet needs more test MON for the payment and gas.");
@@ -151,6 +168,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
     </section>
     <section className={styles.section}>
       <h2>Benefit activity</h2><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
+      <p className={styles.meta}>{auth.canSponsorClaims ? "Claims from your Early wallet request sponsored gas through Privy. You do not need MON for claim fees when sponsorship is available." : "Claims from an external wallet require test MON for gas."} Campaign funding and refunds use the funding wallet’s gas.</p>
       <div className={styles.row}><label className={styles.field}>Benefit ID<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label>
         <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => refreshIndexed())}>Refresh activity</button>
         <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"))}>Check eligibility & claim</button></div>
