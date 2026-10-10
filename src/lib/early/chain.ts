@@ -3,6 +3,7 @@ import { ensure, requireSetting } from "./errors";
 import { escrowAbi, type Authorization } from "./escrow-interface";
 import { db, one, type StoredRule } from "./store";
 import { matchesBenefit } from "./benefit-terms";
+import { escrowEvents } from "./receipt-events";
 
 export function escrowAddress() { return getAddress(requireSetting("NEXT_PUBLIC_MONAD_ESCROW_ADDRESS")); }
 export async function monad() {
@@ -38,24 +39,19 @@ export async function reconcileReceipt(txHash: string, userId: string, wallet: s
   const { provider, address } = await monad();
   const receipt = await provider.getTransactionReceipt(txHash);
   if (!receipt) return { status: "submitted", txHash };
-  ensure(receipt.to && getAddress(receipt.to) === address && getAddress(receipt.from) === getAddress(wallet),
-    "TRANSACTION_MISMATCH", "Transaction does not belong to this wallet and escrow.");
   ensure(receipt.status === 1, "TRANSACTION_REVERTED", "The transaction reverted.", 409);
+  const direct = receipt.to?.toLowerCase() === address.toLowerCase() && receipt.from.toLowerCase() === wallet.toLowerCase();
+  // Bundlers can include several users: only this wallet's escrow events belong to its receipt record.
+  const events = escrowEvents(receipt.logs, address)
+    .filter(event => event.wallet === wallet.toLowerCase() && (direct || event.name === "BenefitClaimed"))
+    .map(({ name, benefitId, logIndex }) => ({ name, benefitId, logIndex }));
+  ensure(events.length > 0, "TRANSACTION_MISMATCH", "No escrow event belongs to this wallet.");
   const block = await provider.getBlock(receipt.blockNumber);
   ensure(block?.hash === receipt.blockHash, "REORG_PENDING", "Transaction block changed; waiting for confirmation.", 409);
   const confirmations = (await provider.getBlockNumber()) - receipt.blockNumber + 1;
   if (confirmations < 2) return { status: "confirming", txHash, confirmations };
-  const iface = new Interface(escrowAbi);
-  const events = receipt.logs.filter(l => l.address.toLowerCase() === address.toLowerCase()).flatMap(l => {
-    try {
-      const event = iface.parseLog(l);
-      if (!event || !["BenefitCreated", "BenefitFunded", "BenefitClaimed", "BenefitClosed"].includes(event.name)) return [];
-      return [{ name: event.name, benefitId: event.args.benefitId.toString(), logIndex: l.index }];
-    } catch { return []; }
-  });
-  ensure(events.length > 0, "TRANSACTION_MISMATCH", "No supported benefit event was emitted.");
-  await db("early_chain_receipts?on_conflict=chain_id,tx_hash", "POST", { chain_id: 10143, tx_hash: txHash.toLowerCase(),
-    user_id: userId, wallet, block_number: receipt.blockNumber, block_hash: receipt.blockHash, events });
+  await db("early_chain_receipts?on_conflict=chain_id,tx_hash,wallet", "POST", { chain_id: 10143, tx_hash: txHash.toLowerCase(),
+    user_id: userId, wallet: wallet.toLowerCase(), block_number: receipt.blockNumber, block_hash: receipt.blockHash, events });
   for (const event of events.filter(e => e.name === "BenefitCreated")) {
     const snapshot = await benefitSnapshot(event.benefitId);
     const rule = await one<StoredRule>("early_rules", { commitment: snapshot.b.ruleHash, creator_wallet: getAddress(snapshot.b.creator) });

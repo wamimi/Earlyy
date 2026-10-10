@@ -11,9 +11,11 @@ import {
   PrivyProvider,
   usePrivy,
   useWallets,
+  useSendTransaction,
   type ConnectedWallet
 } from "@privy-io/react-auth";
 import { monadTestnet } from "@/lib/early/escrow-interface";
+import { sendSponsoredClaim, type ClaimTransaction } from "@/lib/early/sponsored-claim";
 
 type EthereumProvider = Awaited<ReturnType<ConnectedWallet["getEthereumProvider"]>>;
 
@@ -23,6 +25,8 @@ type EarlyAuthValue = {
   authenticated: boolean;
   displayName: string;
   walletAddress: string;
+  canSponsorClaims: boolean;
+  sponsorClaim: (transaction: ClaimTransaction) => Promise<{ hash: string }>;
   login: () => void;
   logout: () => Promise<void>;
   getAccessToken: () => Promise<string>;
@@ -40,6 +44,8 @@ const missingAuth: EarlyAuthValue = {
   authenticated: false,
   displayName: "",
   walletAddress: "",
+  canSponsorClaims: false,
+  sponsorClaim: missingProvider,
   login: () => window.alert("Add NEXT_PUBLIC_PRIVY_APP_ID to .env.local to enable Early accounts."),
   logout: async () => undefined,
   getAccessToken: missingProvider,
@@ -52,9 +58,14 @@ const EarlyAuthContext = createContext<EarlyAuthValue>(missingAuth);
 function PrivyBridge({ children }: { children: ReactNode }) {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
+  const { sendTransaction } = useSendTransaction();
   const activeWallet = wallets.find((wallet) => wallet.walletClientType === "privy") ?? wallets[0];
   const email = user?.email?.address;
   const socialName = user?.google?.name ?? user?.twitter?.name;
+  const sponsorClaim = useCallback(async (transaction: ClaimTransaction) => {
+    if (!activeWallet || activeWallet.walletClientType !== "privy") throw new Error("Sponsored claims require an Early embedded wallet.");
+    return sendSponsoredClaim(transaction, activeWallet.address, process.env.NEXT_PUBLIC_MONAD_ESCROW_ADDRESS, sendTransaction);
+  }, [activeWallet, sendTransaction]);
 
   const readAccessToken = useCallback(async () => {
       const token = await getAccessToken();
@@ -85,6 +96,8 @@ function PrivyBridge({ children }: { children: ReactNode }) {
           ? `${activeWallet.address.slice(0, 6)}...${activeWallet.address.slice(-4)}`
           : ""),
       walletAddress: activeWallet?.address ?? "",
+      canSponsorClaims: activeWallet?.walletClientType === "privy",
+      sponsorClaim,
       login,
       logout,
       getAccessToken: readAccessToken,
@@ -102,6 +115,7 @@ function PrivyBridge({ children }: { children: ReactNode }) {
       readEthereumProvider,
       ready,
       socialName,
+      sponsorClaim,
     ]
   );
 

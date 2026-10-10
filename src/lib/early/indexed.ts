@@ -1,5 +1,6 @@
 import { ensure, requireSetting } from "./errors";
 import { escrowAddress, monad } from "./chain";
+import { escrowEvents } from "./receipt-events";
 
 export async function indexedBenefit(benefitId: string, txHash?: string) {
   ensure(/^[1-9]\d{0,77}$/.test(benefitId), "INVALID_BENEFIT", "Invalid benefit ID.");
@@ -31,7 +32,8 @@ export async function indexedBenefit(benefitId: string, txHash?: string) {
       const { provider, address } = await monad();
       const receipt = await provider.getTransactionReceipt(txHash);
       const block = receipt ? await provider.getBlock(receipt.blockNumber) : null;
-      if (!receipt || receipt.status !== 1 || receipt.to?.toLowerCase() !== address.toLowerCase() || block?.hash !== receipt.blockHash)
+      if (!receipt || receipt.status !== 1 || block?.hash !== receipt.blockHash ||
+          !escrowEvents(receipt.logs, address).some(event => event.benefitId === benefitId))
         return { status: "confirmation_pending", benefit: null, claims: [], creator: null };
       indexed = eventResponse.ok && !eventData.errors && Boolean(indexedEvent) && indexedEvent.blockHash === receipt.blockHash;
     }

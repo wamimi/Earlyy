@@ -35,3 +35,14 @@ it("rejects mainnet and an undeployed escrow",async()=>{
   mocks.network.mockResolvedValue({chainId:BigInt(143)});await expect(reconcileReceipt(tx,"user",wallet)).rejects.toMatchObject({code:"WRONG_NETWORK"});
   mocks.network.mockResolvedValue({chainId:BigInt(10143)});mocks.code.mockResolvedValue("0x");await expect(reconcileReceipt(tx,"user",wallet)).rejects.toMatchObject({code:"ESCROW_NOT_DEPLOYED"});
 });
+it("confirms a bundled claim by its beneficiary and isolates other users' events",async()=>{
+  const other="0x0000000000000000000000000000000000000003";
+  const iface=new Interface(escrowAbi);
+  const log=(beneficiary:string,index:number)=>({address,index,...iface.encodeEventLog(iface.getEvent("BenefitClaimed")!,[index+1,beneficiary,`0x${"11".repeat(32)}`,10,0,1])});
+  mocks.receipt.mockResolvedValue({to:other,from:other,status:1,blockNumber:10,blockHash:"canonical",logs:[log(wallet,0),log(other,1)]});
+  expect(await reconcileReceipt(tx,"user",wallet)).toMatchObject({status:"confirmed",events:[{name:"BenefitClaimed",benefitId:"1",logIndex:0}]});
+  expect(mocks.db.mock.calls[0][0]).toContain("on_conflict=chain_id,tx_hash,wallet");
+  await expect(reconcileReceipt(tx,"intruder",address)).rejects.toMatchObject({code:"TRANSACTION_MISMATCH"});
+  mocks.receipt.mockResolvedValue({to:other,from:other,status:1,blockNumber:10,blockHash:"canonical",logs:[{...log(wallet,0),address:other}]});
+  await expect(reconcileReceipt(tx,"user",wallet)).rejects.toMatchObject({code:"TRANSACTION_MISMATCH"});
+});
