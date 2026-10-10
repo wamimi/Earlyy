@@ -19,7 +19,7 @@ export async function db<T>(path: string, method = "GET", body?: unknown): Promi
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    const known = ["SESSION_FORBIDDEN", "SESSION_CONFLICT", "SESSION_EXPIRED", "SOURCE_ALREADY_BOUND", "SOURCE_RELINK_FORBIDDEN", "EVENT_CONFLICT", "WALLET_AUTHORIZATION_PENDING", "TERMS_CONFLICT"];
+    const known = ["SESSION_FORBIDDEN", "SESSION_CONFLICT", "SESSION_EXPIRED", "SOURCE_ALREADY_BOUND", "SOURCE_RELINK_FORBIDDEN", "EVENT_CONFLICT", "WALLET_AUTHORIZATION_PENDING", "TERMS_CONFLICT", "TEAM_REQUIRED", "PARTNER_NOT_APPROVED", "RULE_NOT_FOUND", "PARTNER_CONFLICT", "INVALID_EXPIRY"];
     const code = known.includes(detail.message) ? detail.message : "STORAGE_UNAVAILABLE";
     throw new EarlyError(code, code === "STORAGE_UNAVAILABLE" ? "Durable storage is unavailable. Verify the migration and service configuration." : code.replaceAll("_", " "), code === "STORAGE_UNAVAILABLE" ? 503 : 409);
   }

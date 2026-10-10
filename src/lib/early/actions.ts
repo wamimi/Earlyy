@@ -24,7 +24,7 @@ export async function action(operation: string, input: Record<string, unknown>, 
       ensure(r, "RULE_NOT_FOUND", "Campaign not found.", 404);
       ensure(!r.published_at || r.organization_id === organizationId, "PARTNER_CONFLICT", "A published campaign cannot be reassigned to another partner.", 409);
       ensure(r.definition.claimExpiry > Date.now() / 1000, "INVALID_EXPIRY", "The campaign has expired.");
-      return db(`early_rules?${new URLSearchParams({id:`eq.${r.id}`})}`, "PATCH", { organization_id: organizationId, published_at: new Date().toISOString() });
+      return db("rpc/early_publish_campaign", "POST", { p_user: user.user_id, p_rule: r.id, p_organization: organizationId });
     }
     case "rules": {
       await requireTeam(user.user_id);
