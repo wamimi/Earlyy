@@ -4,8 +4,8 @@ import type { RouteId } from "./model";
 // Hashes derived from the reviewed provider recipes, not Early session commitments.
 export const providers = {
   spotify_saved_track: {
-    id: "486e7100-ea6e-4b82-b2ee-48933a05abc6", version: "1.0.4",
-    hash: "0xb9bb4959301e4f16454c6d8b0199251914584597092b139f9abc54f889a44e5b",
+    id: "486e7100-ea6e-4b82-b2ee-48933a05abc6", version: "1.0.5",
+    hash: "0xdf3b424a388e54867e88d4363567eec332c10e77708d3a42c960f2c1eaa60c93",
     prefix: "RECLAIM_SPOTIFY_SAVED_TRACK", coverage: "selected_saved_item",
     deviceAccepted: false, ownershipAccepted: false,
   },

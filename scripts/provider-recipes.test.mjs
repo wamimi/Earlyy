@@ -63,3 +63,18 @@ test('changing the selected event or collection does not change the declared rec
   assert.equal(hashProviderParams(spotifyTrackRecipe({ collectionUri: 'spotify:playlist:0000000000000000000000', offset: 0 })),
     hashProviderParams(spotifyTrackRecipe({ collectionUri: 'spotify:playlist:1111111111111111111111', offset: 40 })));
 });
+test('Spotify reveals one intact item through its parent without exposing another item', () => {
+  const params = spotifyTrackRecipe({ collectionUri: 'spotify:playlist:0000000000000000000000', offset: 0 });
+  const selected = { addedAt: { isoString: '2025-01-01T00:00:00Z' }, itemV2: { data: { name: 'Música 🎵', uri: 'spotify:track:example' } }, uid: 'event1' };
+  const other = { addedAt: { isoString: '2026-01-01T00:00:00Z' }, itemV2: { data: { name: 'Private other song', uri: 'spotify:track:other' } }, uid: 'event2' };
+  const body = JSON.stringify({ before: 'é 🎵', data: { playlistV2: { content: { items: [selected, other] }, ownerV2: { data: { uri: 'spotify:user:example' } }, format: 'liked-songs', currentUserCapabilities: { canEditItems: true } } } });
+  const response = Buffer.from(`HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+  const redacted = Buffer.from(response);
+  for (const range of providers.http.getResponseRedactions({ response, params, logger, ctx })) redacted.fill(42, range.fromIndex, range.toIndex);
+  assert.ok(redacted.includes(Buffer.from(JSON.stringify(selected))));
+  assert.equal(redacted.includes(Buffer.from('Private other song')), false);
+  const request = providers.http.createRequest({ headers: {} }, params, logger).data;
+  const result = providers.http.assertValidProviderReceipt({ params, logger, ctx, clientVersion: 7, receipt: [{ sender: 'client', message: Buffer.from(request) }, { sender: 'server', message: redacted }] });
+  assert.deepEqual(JSON.parse(result.extractedParameters.saved_item), selected);
+  assert.equal(params.responseRedactions[0].jsonPath, '$.data.playlistV2.content');
+});

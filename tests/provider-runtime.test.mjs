@@ -44,12 +44,25 @@ it('returns to Spotify Liked Songs only after detecting the signed-in profile', 
 it('queues one Spotify item without a false provider error when the native bridge returns null', async () => {
   const track = '5jDH3DncHm4ZTl9sKX5dDJ';
   const r = runtime(spotifyTrackUserScript(), 'open.spotify.com', { track_id: track });
-  const data = { data: { playlistV2: { format: 'liked-songs', content: { totalCount: 1, items: [{ addedAt: { isoString: '2025-01-01T00:00:00Z' }, itemV2: { data: { __typename: 'Track', uri: `spotify:track:${track}` } } }] } } } };
-  r.originalFetch.mockResolvedValue(new Response(JSON.stringify(data), { status: 200 }));
+  const data = { data: { playlistV2: { format: 'liked-songs', ownerV2: { data: { uri: 'spotify:user:example' } }, currentUserCapabilities: { canEditItems: true }, content: { totalCount: 1, items: [{ addedAt: { isoString: '2025-01-01T00:00:00Z' }, itemV2: { data: { __typename: 'Track', uri: `spotify:track:${track}` } }, uid: 'event1' }] } } } };
+  r.originalFetch.mockImplementation(async () => new Response(JSON.stringify(data), { status: 200 }));
   await r.window.fetch('https://api-partner.spotify.com/pathfinder/v2/query', { body: JSON.stringify({ operationName: 'fetchPlaylist', variables: { uri: `spotify:playlist:${'a'.repeat(22)}`, offset: 0 }, extensions: { persistedQuery: { sha256Hash: '8964e8eafb21aa992a7d951d256d83285c04be2105d209262901de70cb97584a' } } }) });
   await new Promise(resolve => setTimeout(resolve, 20));
   expect(r.bridge.requestClaim).toHaveBeenCalledOnce();
   expect(r.bridge.reportProviderError).not.toHaveBeenCalled();
+  expect(JSON.parse(r.originalFetch.mock.calls[1][1].body).variables.limit).toBe(1);
+  expect(r.bridge.log).toHaveBeenCalledWith('info', { event: 'EARLY_SPOTIFY_SELECTED_RESPONSE', status: 200, itemCount: 1, recipeMatches: true });
+});
+it('does not prove a changed item returned by the one-song replay', async () => {
+  const track = '5jDH3DncHm4ZTl9sKX5dDJ';
+  const r = runtime(spotifyTrackUserScript(), 'open.spotify.com', { track_id: track });
+  const makeData = uri => ({ data: { playlistV2: { format: 'liked-songs', ownerV2: { data: { uri: 'spotify:user:example' } }, currentUserCapabilities: { canEditItems: true }, content: { totalCount: 1, items: [{ addedAt: { isoString: '2025-01-01T00:00:00Z' }, itemV2: { data: { __typename: 'Track', uri } }, uid: 'event1' }] } } } });
+  r.originalFetch.mockResolvedValueOnce(new Response(JSON.stringify(makeData(`spotify:track:${track}`))))
+    .mockResolvedValueOnce(new Response(JSON.stringify(makeData(`spotify:track:${'a'.repeat(22)}`))));
+  await r.window.fetch('https://api-partner.spotify.com/pathfinder/v2/query', { body: JSON.stringify({ operationName: 'fetchPlaylist', variables: { uri: `spotify:playlist:${'a'.repeat(22)}`, offset: 0 }, extensions: { persistedQuery: { sha256Hash: '8964e8eafb21aa992a7d951d256d83285c04be2105d209262901de70cb97584a' } } }) });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  expect(r.bridge.requestClaim).not.toHaveBeenCalled();
+  expect(r.bridge.reportProviderError).toHaveBeenCalledOnce();
 });
 it('publishes concrete proof routing and a desktop web layout on both mobile platforms', () => {
   expect(proofGeoLocation).toMatch(/^[A-Z]{2}$/);
