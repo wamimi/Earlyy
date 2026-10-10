@@ -10,10 +10,15 @@ import { capabilities } from "./providers";
 import { db, one, ownedEvidence, type Session, type StoredRule } from "./store";
 import { completeSession, startSession } from "./verification";
 import { getReclaimProofs } from "../reclaim-proof";
+import { resolveSupportTarget } from "./targets";
 
 export type Principal = { user_id: string; wallet: string };
 export async function action(operation: string, input: Record<string, unknown>, user: Principal): Promise<unknown> {
   switch (operation) {
+    case "resolve-target": {
+      ensure(input.route === "spotify_saved_track" || input.route === "youtube_subscription", "UNSUPPORTED_ROUTE", "Choose Spotify or YouTube.");
+      return resolveSupportTarget(input.route, string(input.link, 500));
+    }
     case "access": return workspaceAccess(user.user_id);
     case "campaign-benefits": return campaignBenefits(await visibleRule(string(input.ruleId), user.user_id));
     case "publish-rule": {
@@ -49,7 +54,7 @@ export async function action(operation: string, input: Record<string, unknown>, 
       const evaluation = evaluate(rule.definition, evidence.map(e => e.evidence));
       return { evaluation, routes: rule.definition.alternatives.map(selection => ({ selection,
         status: evaluation.status === "eligible" ? "sufficient_evidence" : "awaiting_proof",
-        selectionLocation: "verifier", coverage: capabilities().find(c => c.route === selection.route)?.coverage })), capabilities: capabilities() };
+        selectionLocation: "campaign", coverage: capabilities().find(c => c.route === selection.route)?.coverage })), capabilities: capabilities() };
     }
     case "sessions": {
       ensure(input.consent === true, "CONSENT_REQUIRED", "Consent to proving this selected activity is required.");

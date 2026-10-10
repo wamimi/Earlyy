@@ -6,6 +6,8 @@ import { BrowserProvider, formatEther, getAddress, parseEther } from "ethers";
 import { QRCodeSVG } from "qrcode.react";
 import { useEarlyAuth } from "./early-auth";
 import type { Evaluation, Rule, RuleRoute } from "@/lib/early/model";
+import type { SupportTarget } from "@/lib/early/targets";
+import { proofStatusText } from "@/lib/early/proof-status";
 import styles from "./rewards-workspace.module.css";
 
 type RuleView = { id: string; commitment: string; creator_wallet: string; definition: Rule };
@@ -44,6 +46,9 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   const [error, setError] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [session, setSession] = useState<SessionView | null>(initialSessionId ? {sessionId:initialSessionId, requestUrl:"", expiresAt:""} : null);
+  const [polling, setPolling] = useState(Boolean(initialSessionId));
+  const verificationPanel = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (session?.requestUrl) verificationPanel.current?.focus(); }, [session?.requestUrl]);
   const [benefitId, setBenefitId] = useState(initialBenefitId ?? "");
   const [access, setAccess] = useState<{team:boolean;organizations:{id:string;name:string;kind:string}[]} | null>(null);
   const [organizationId, setOrganizationId] = useState("");
@@ -53,14 +58,41 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const rule = rules.find(r => r.id === ruleId);
-  const api = useCallback(async <T,>(operation: string, input: object = {}): Promise<T> => {
+  const api = useCallback(async <T,>(operation: string, input: object = {}, signal?: AbortSignal): Promise<T> => {
     const token = await auth.getAccessToken();
     const response = await fetch(`/api/early/${operation}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...input, wallet: auth.walletAddress }) });
+      body: JSON.stringify({ ...input, wallet: auth.walletAddress }), signal });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message ?? "The request could not be completed.");
     return data as T;
   }, [auth]);
+  const checkProof = useCallback(async (signal?: AbortSignal) => {
+    if (!session) return;
+    const result = await api<{ status: string }>("session-status", { sessionId: session.sessionId }, signal);
+    if (!active.current || signal?.aborted) return;
+    setStatus(proofStatusText(result.status));
+    if (result.status !== "awaiting_proof") {
+      setPolling(false);
+      setSession(current => current?.sessionId === session.sessionId ? { ...current, requestUrl: "" } : current);
+    }
+    if (result.status === "verified" && ruleId) {
+      const next = await api<Evaluation>("evaluate", { ruleId }, signal);
+      if (active.current && !signal?.aborted) { setEvaluation(next); setStatus(next.reason); }
+    }
+  }, [api, session, ruleId]);
+  useEffect(() => {
+    if (!polling || !session) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function tick() {
+      try { await checkProof(controller.signal); }
+      catch { if (!cancelled) { setPolling(false); setError("Couldn’t check verification status. Your proof may still arrive; use Check proof status to retry."); } return; }
+      if (!cancelled) timer = setTimeout(tick, 5000);
+    }
+    void tick();
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
+  }, [polling, session, checkProof]);
   useEffect(() => {
     let cancelled = false;
     void api<{team:boolean;organizations:{id:string;name:string;kind:string}[]}>("access").then(value => { if (!cancelled) setAccess(value); }).catch(() => { if (!cancelled) setError("Couldn’t load workspace permissions. Creator controls remain locked."); });
@@ -150,21 +182,19 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
         {rule.definition.alternatives.map((selection, i) => <div key={`${selection.route}-${i}`} className={styles.route}>
           <p><strong>{selection.route === "spotify_saved_track" ? "Spotify saved track" : "YouTube subscription"}</strong><br />{selection.targetId}<br />Before {selection.cutoff} (UTC)</p>
           <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !consent || evaluation?.status === "eligible"} onClick={() => run(async () => {
-            const result = await api<SessionView>("sessions", { selection, consent });setSession(result);setStatus("Continue in Reclaim Verifier to find a matching activity. If no record is available, try another accepted route.");
+            const result = await api<SessionView>("sessions", { ruleId, selection, consent });setSession(result);setPolling(true);setStatus("Open Reclaim Verifier and sign in. Early will update when your proof arrives.");
           })}>Verify {selection.route === "spotify_saved_track" ? "Spotify" : "YouTube"} activity</button>
         </div>)}
       </>}
-      {session && <div>
+      {session && <div ref={verificationPanel} tabIndex={-1} aria-label="Complete verification">
+        <p>On your phone, open Reclaim Verifier. On a computer, scan the QR code with your phone. Sign into the source account you used to save the song or subscribe to the channel. You do not need to play anything or change your existing support.</p>
         {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
         <p><a href={session.requestUrl} target="_blank" rel="noreferrer">Open Reclaim Verifier</a> · Expires {new Date(session.expiresAt).toLocaleTimeString()}</p></>}
-        <button className={styles.button} disabled={busy} onClick={() => run(async () => {
-          const result = await api<{ status: string }>("session-status", { sessionId: session.sessionId });setStatus(`Proof ${result.status.replaceAll("_", " ")}.`);
-          if (result.status === "verified" && ruleId) { const e = await api<Evaluation>("evaluate", { ruleId });setEvaluation(e);setStatus(e.reason); }
-        })}>Check proof status</button>
+        <button className={styles.button} disabled={busy} onClick={() => run(checkProof)}>Check proof status</button>
       </div>}
-      <details className={styles.route}><summary>Save support before an opportunity exists</summary>
-        <StandaloneProof busy={busy} start={selection => run(async () => {setSession(await api<SessionView>("sessions", { selection, consent: true }));setStatus("Verify only the selected activity in Reclaim Verifier.");})} />
-      </details>
+      <section id="save-support" className={styles.route} aria-labelledby="save-support-title"><h3 id="save-support-title">Save support before a campaign exists</h3>
+        <StandaloneProof busy={busy} resolve={(route, link) => api<SupportTarget>("resolve-target", { route, link })} start={selection => run(async () => {setPolling(false);setSession(null);const created=await api<SessionView>("sessions", { selection, consent: true });setRuleId("");setEvaluation(null);setSession(created);setPolling(true);setStatus("Open Reclaim Verifier and sign in. The selected activity will be saved only after its proof is verified.");})} />
+      </section>
     </section>
     <section className={styles.section}>
       <h2>Benefit activity</h2><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
@@ -189,15 +219,34 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   </>;
 }
 
-function StandaloneProof({ busy, start }: { busy: boolean; start: (r: RuleRoute) => void }) {
+function StandaloneProof({ busy, start, resolve }: { busy: boolean; start: (r: RuleRoute) => void; resolve: (route: RuleRoute["route"], link: string) => Promise<SupportTarget> }) {
   const [route, setRoute] = useState<RuleRoute["route"]>("spotify_saved_track");
   const [consent, setConsent] = useState(false);
-  return <form onSubmit={e => {e.preventDefault();const data = new FormData(e.currentTarget);start({route,targetId:String(data.get("target")),cutoff:new Date().toISOString()});}}>
-    <p>Choose a target to preserve a support record now. A future campaign can evaluate it with your consent.</p>
-    <div className={styles.row}><label className={styles.field}>Platform<select value={route} onChange={e => setRoute(e.target.value as RuleRoute["route"])}><option value="spotify_saved_track">Spotify</option><option value="youtube_subscription">YouTube</option></select></label>
-      <label className={styles.field}>Target ID<input name="target" required placeholder={route === "spotify_saved_track" ? "spotify:artist:… or spotify:track:…" : "UC… channel ID"} /></label></div>
-    <label className={styles.consent}><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I consent to verifying and privately saving this selected activity.</label>
-    <button className={styles.button} disabled={busy || !consent}>Save a support record</button>
+  const [link, setLink] = useState("");
+  const [target, setTarget] = useState<SupportTarget | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [error, setError] = useState("");
+  const revision = useRef(0);
+  function reset() { revision.current++; setTarget(null); setConsent(false); setError(""); }
+  async function review(event: FormEvent) {
+    event.preventDefault(); const current = ++revision.current; setResolving(true); setError(""); setTarget(null); setConsent(false);
+    try { const value = await resolve(route, link); if (current === revision.current) setTarget(value); }
+    catch (cause) { if (current === revision.current) setError(cause instanceof Error ? cause.message : "Couldn’t load this target. Try again."); }
+    finally { setResolving(false); }
+  }
+  return <form onSubmit={review}>
+    <p>Preserve existing support for an artist or channel you believe in. Copy its public link from Spotify or YouTube—no IDs needed.</p>
+    <div className={styles.row}><label className={styles.field}>Platform<select value={route} disabled={busy || resolving} onChange={e => {reset();setLink("");setRoute(e.target.value as RuleRoute["route"]);}}><option value="spotify_saved_track">Spotify</option><option value="youtube_subscription">YouTube</option></select></label>
+      <label className={styles.field}>{route === "spotify_saved_track" ? "Song or artist link" : "Channel link"}<input name="target" required disabled={busy || resolving} value={link} onChange={e => {reset();setLink(e.target.value);}} placeholder={route === "spotify_saved_track" ? "https://open.spotify.com/track/…" : "https://www.youtube.com/@mitocw"} /></label>
+      <button className={`${styles.button} ${styles.secondary}`} disabled={busy || resolving || !link.trim()}>{resolving ? "Finding target…" : "Review selection"}</button></div>
+    {error && <p role="alert" className={styles.error}>{error}</p>}
+    {target && <div className={styles.route}>
+      <p><strong>{target.label}</strong> · <a href={target.url} target="_blank" rel="noreferrer">View on {route === "spotify_saved_track" ? "Spotify" : "YouTube"}</a></p>
+      <p>{route === "spotify_saved_track" ? "Reclaim Verifier searches your Liked Songs for a dated save of this song, or a saved song associated with this artist." : "Verify a dated subscription to this channel from Google My Activity. Only the loaded activity page is searched."} Reclaim processes the selected record and source-account information. Early stores the verified record privately; your full history is not published.</p>
+      <p className={styles.meta}>We look for activity before the time you start verification. This is a support record, not a campaign qualification. A future campaign sets its own cutoff and reward rules.</p>
+      <label className={styles.consent}><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I consent to verifying and privately saving this selected support record.</label>
+      <button type="button" className={styles.button} disabled={busy || !consent} onClick={() => start({route,targetId:target.targetId,cutoff:new Date().toISOString()})}>{busy ? "Preparing verification…" : "Verify with Reclaim"}</button>
+    </div>}
   </form>;
 }
 
