@@ -29,6 +29,14 @@ export function spotifyTrackUserScript() {
     const originalFetch = window.fetch;
     let busy = false;
     let complete = false;
+    const navigationTimer = setInterval(() => {
+      if (complete) { clearInterval(navigationTimer); return; }
+      if (!window.Reclaim || !document.querySelector('[data-testid="user-widget-link"]')) return;
+      if (location.pathname !== '/collection/tracks') {
+        clearInterval(navigationTimer);
+        location.assign('https://open.spotify.com/collection/tracks');
+      }
+    }, 500);
     async function inspect(input, init, response) {
       if (busy || complete || !window.Reclaim || response.status !== 200) return;
       const requestUrl = typeof input === 'string' ? input : input.url;
@@ -70,7 +78,7 @@ export function spotifyTrackUserScript() {
               bodySniff: { enabled: true, template: recipe.body }, requestBody: actualBody,
               headers: Object.fromEntries(headers), credentials: 'include',
               witnessParameters: { collection_uri: collection, offset: String(selectedOffset) } });
-            if (!claimId) throw new Error('The proof request could not be started.');
+            if (!claimId) window.Reclaim.log?.('info', 'Claim submitted without an identifier; waiting for the Verifier result.');
             complete = true;
             window.Reclaim.canExpectManyClaims(false);
             return;
@@ -156,7 +164,7 @@ export function youtubeSubscriptionUserScript() {
         if (typeof row[5] !== 'string' || row[5].length !== 115) throw new Error('YouTube changed its activity format. Please try another evidence route.');
         const claimId = await window.Reclaim.requestClaim({ ...recipe, credentials: 'include',
           witnessParameters: { selected_timestamp: String(row[4]), selected_channel_id: row[9][3].split('/').at(-1) } });
-        if (!claimId) throw new Error('The proof request could not be started.');
+        if (!claimId) bridge.log?.('info', 'Claim submitted without an identifier; waiting for the Verifier result.');
         bridge.canExpectManyClaims(false);
       } catch (error) {
         bridge.canExpectManyClaims(false);

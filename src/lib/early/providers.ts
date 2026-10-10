@@ -4,13 +4,13 @@ import type { RouteId } from "./model";
 // Hashes derived from the reviewed provider recipes, not Early session commitments.
 export const providers = {
   spotify_saved_track: {
-    id: "486e7100-ea6e-4b82-b2ee-48933a05abc6", version: "1.0.2",
+    id: "486e7100-ea6e-4b82-b2ee-48933a05abc6", version: "1.0.4",
     hash: "0xb9bb4959301e4f16454c6d8b0199251914584597092b139f9abc54f889a44e5b",
     prefix: "RECLAIM_SPOTIFY_SAVED_TRACK", coverage: "selected_saved_item",
     deviceAccepted: false, ownershipAccepted: false,
   },
   youtube_subscription: {
-    id: "0e7046f2-4a43-448c-9b6f-7d1423525513", version: "1.0.3",
+    id: "0e7046f2-4a43-448c-9b6f-7d1423525513", version: "1.0.4",
     hash: "0x2697f9aa44ed19900aac732a90a403f35a08f9ac0e6dee3277d507f0fb47a0d9",
     prefix: "RECLAIM_YOUTUBE_SUBSCRIPTION", coverage: "loaded_english_activity_page",
     deviceAccepted: false, ownershipAccepted: false,
@@ -33,7 +33,7 @@ export function requireRewardAcceptance(route: RouteId) {
 export function capabilities() {
   return [
     ...Object.entries(providers).map(([route, p]) => ({ route, state: "experimental_proof", rewardReady: p.deviceAccepted && p.ownershipAccepted,
-      coverage: p.coverage, selection: "inside_verifier", reason: "Device and account-ownership acceptance pending." })),
+      coverage: p.coverage, selection: "campaign_or_public_link", reason: "Device and account-ownership acceptance pending." })),
     ...["spotify_artist_library", "spotify_album_save", "spotify_presave", "spotify_listening", "youtube_like", "youtube_comment", "youtube_watch"].map(route => ({
       route, state: "unsupported", rewardReady: false, coverage: "not_accepted", selection: "unavailable",
       reason: "This route has not completed reusable proof and ownership validation.",

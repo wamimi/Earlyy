@@ -1,6 +1,7 @@
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { spotifyTrackRecipe } from './provider-recipes.mjs';
+import { proofGeoLocation } from './provider-client-config.mjs';
 const root = process.env.RECLAIM_AGENT_ROOT;
 await access(`${root}/../zk-symmetric-crypto/resources/stwo`);
 const load = p => import(pathToFileURL(`${root}/lib/${p}`).href);
@@ -8,11 +9,12 @@ const { connectCdp } = await load('cdp/client.js');
 const { startCapture } = await load('cdp/capture.js');
 const { splitSecrets, stripTransportHeaders } = await load('provider/index.js');
 const { runAttestorProof } = await load('proof/index.js');
-const output = '/private/tmp/early-provider-lab';
+const output = process.env.EARLY_PROVIDER_OUTPUT ?? '/private/tmp/early-provider-lab';
 await mkdir(output, { recursive: true, mode: 0o700 });
 const save = (n, v) => writeFile(`${output}/${n}.json`, JSON.stringify(v, null, 2), { mode: 0o600 });
 const browser = await connectCdp(9222);
 let tab, capture;
+let proofVerified = false;
 try {
   const tabs = await browser.listTabs();
   const target = tabs.find(t => t.tabId === process.env.EARLY_CAPTURE_TAB);
@@ -41,6 +43,7 @@ try {
   const p = JSON.parse(value.body).data?.playlistV2;
   if (p?.format !== 'liked-songs' || p.content.items.length !== 1) throw new Error('Expected one real liked-song item.');
   const provider = spotifyTrackRecipe({ collectionUri: body.variables.uri, offset });
+  provider.geoLocation = proofGeoLocation;
   if (JSON.stringify(body) !== provider.body.replace('{{collection_uri}}', body.variables.uri).replace('{{offset}}', String(offset))) {
     throw new Error('Live Spotify request no longer matches the declared template.');
   }
@@ -53,9 +56,10 @@ try {
     track: p.content.items[0].itemV2.data.uri, artists: p.content.items[0].itemV2.data.artists.items.map(a => a.uri),
     canEdit: p.currentUserCapabilities.canEditItems, format: p.format }));
   const result = await runAttestorProof(provider, secrets, { includeAttestorClaim: true, zkEngine: 'gnark' });
+  proofVerified = result.verified === true;
   await save(`spotify-generalized-${offset}-result`, result);
   console.log(JSON.stringify({ stage: 'proof', verified: result.verified, identifier: result.identifier, error: result.error?.slice(0, 200) }));
 } finally {
   await capture?.stop(); await tab?.close(); await browser.close();
 }
-process.exit(0);
+process.exit(proofVerified ? 0 : 1);
