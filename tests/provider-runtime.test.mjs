@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import vm from 'node:vm';
+import { youtubeLikeUserScript } from '../scripts/youtube-like-recipe.mjs';
 import { spotifyTrackUserScript, youtubeSubscriptionUserScript } from '../scripts/provider-recipes.mjs';
 import { proofGeoLocation, spotifyUserAgent, injectedRequestsForPublication } from '../scripts/provider-client-config.mjs';
 
@@ -72,4 +73,19 @@ it('publishes concrete proof routing and a desktop web layout on both mobile pla
 it('preserves the signed request body template when translating published configs to MCP input', () => {
   const requests = injectedRequestsForPublication([{ url: 'https://example.com', bodySniff: { enabled: true, template: '{"offset":{{offset}}}' } }]);
   expect(requests[0].body).toBe('{"offset":{{offset}}}');
+});
+
+function likePage(action='Liked', video='dQw4w9WgXcQ', timestamp=1756924713432194) {
+ const row=Array(33).fill(null);row[4]=timestamp;row[5]='x'.repeat(100);row[9]=['Video',null,action,`https://www.youtube.com/watch?v=${video}`];row[23]=['y'.repeat(48),'3:34'];row[32]=[[null,'Channel',null,`https://www.youtube.com/channel/${channel}`]];
+ return `AF_initDataCallback({key: 'ds:3', data:${JSON.stringify([[row]])}, sideChannel: {}});`;
+}
+it('submits one selected dated like with same-record channel and native null-result handling',async()=>{
+ const r=runtime(youtubeLikeUserScript(),'myactivity.google.com',{video_id:'dQw4w9WgXcQ',cutoff:'2026-01-01T00:00:00.000Z'},likePage());await r.intervals[0]();
+ expect(r.bridge.requestClaim).toHaveBeenCalledOnce();expect(r.bridge.requestClaim.mock.calls[0][0].witnessParameters).toEqual({selected_timestamp:'1756924713432194',selected_video_id:'dQw4w9WgXcQ',selected_channel_id:channel});expect(r.bridge.reportProviderError).not.toHaveBeenCalled();
+});
+it.each(['Watched','Disliked','Searched for'])('does not request a like proof for %s',async action=>{
+ const r=runtime(youtubeLikeUserScript(),'myactivity.google.com',{video_id:'dQw4w9WgXcQ'},likePage(action));await r.intervals[0]();expect(r.bridge.requestClaim).not.toHaveBeenCalled();expect(r.bridge.reportProviderError).toHaveBeenCalledOnce();
+});
+it.each([{video_id:'aaaaaaaaaaa'},{video_id:'dQw4w9WgXcQ',cutoff:'2020-01-01T00:00:00Z'},{video_id:'.*'},{video_id:'dQw4w9WgXcQ',cutoff:'yesterday'}])('does not submit missing, late or malformed selection %j',async params=>{
+ const r=runtime(youtubeLikeUserScript(),'myactivity.google.com',params,likePage());await r.intervals[0]();expect(r.bridge.requestClaim).not.toHaveBeenCalled();expect(r.bridge.canExpectManyClaims).toHaveBeenLastCalledWith(false);
 });
