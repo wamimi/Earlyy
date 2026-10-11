@@ -27,9 +27,10 @@ export function RewardsWorkspace({ deployed, initialSessionId, initialBenefitId 
     <p>Verify an activity you choose, check a creator’s rules, and claim an available reward. Your source account and private proof stay off-chain.</p>
     <p className={styles.notice}>Test rewards use test MON. Spotify and YouTube reward claims are awaiting device and account-ownership validation. Test MON does not represent merchandise or ticket fulfillment.</p>
     {!deployed && <p className={styles.meta}>The reward contract is not deployed yet. You can prepare rules and support records; funding and claims will become available after setup.</p>}
-    {!hydrated || !auth.ready ? <p role="status">Loading your account…</p> : !auth.authenticated || !auth.walletAddress
+    {!hydrated ? <p role="status">Loading your account…</p> : !auth.ready || !auth.authenticated || !auth.walletAddress
       ? <section className={styles.section}><h2>Connect your Early account</h2><p>Use your account wallet to keep support records and rewards together.</p>
-        <button className={styles.button} disabled={!auth.configured} onClick={auth.login}>Sign in to continue</button>
+        <button className={styles.button} disabled={!auth.ready || !auth.configured} onClick={auth.login}>Sign in to continue</button>
+        {!auth.ready && <p role="status">Connecting to account services… If this persists, check your connection and reload the page.</p>}
         {!auth.configured && <p>Account sign-in is not configured for this environment.</p>}</section>
       : <Workspace key={auth.walletAddress} deployed={deployed} initialSessionId={initialSessionId} initialBenefitId={initialBenefitId} />}
   </main>;
@@ -47,6 +48,14 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [session, setSession] = useState<SessionView | null>(initialSessionId ? {sessionId:initialSessionId, requestUrl:"", expiresAt:""} : null);
   const [polling, setPolling] = useState(Boolean(initialSessionId));
+  const [verified, setVerified] = useState(false);
+  const sessionId = session?.sessionId;
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (sessionId) url.searchParams.set("session", sessionId);
+    else url.searchParams.delete("session");
+    window.history.replaceState(window.history.state, "", url);
+  }, [sessionId]);
   const verificationPanel = useRef<HTMLDivElement>(null);
   useEffect(() => { if (session?.requestUrl) verificationPanel.current?.focus(); }, [session?.requestUrl]);
   const [benefitId, setBenefitId] = useState(initialBenefitId ?? "");
@@ -58,28 +67,48 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const rule = rules.find(r => r.id === ruleId);
+  const { getAccessToken, walletAddress } = auth;
   const api = useCallback(async <T,>(operation: string, input: object = {}, signal?: AbortSignal): Promise<T> => {
-    const token = await auth.getAccessToken();
+    const token = await getAccessToken();
     const response = await fetch(`/api/early/${operation}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...input, wallet: auth.walletAddress }), signal });
+      body: JSON.stringify({ ...input, wallet: walletAddress }), signal });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message ?? "The request could not be completed.");
     return data as T;
-  }, [auth]);
+  }, [getAccessToken, walletAddress]);
   const checkProof = useCallback(async (signal?: AbortSignal) => {
     if (!session) return;
     const result = await api<{ status: string }>("session-status", { sessionId: session.sessionId }, signal);
     if (!active.current || signal?.aborted) return;
+    setError("");
+    setVerified(result.status === "verified");
     setStatus(proofStatusText(result.status));
-    if (result.status !== "awaiting_proof") {
-      setPolling(false);
-      setSession(current => current?.sessionId === session.sessionId ? { ...current, requestUrl: "" } : current);
-    }
     if (result.status === "verified" && ruleId) {
       const next = await api<Evaluation>("evaluate", { ruleId }, signal);
       if (active.current && !signal?.aborted) { setEvaluation(next); setStatus(next.reason); }
     }
+    if (result.status !== "awaiting_proof" && active.current && !signal?.aborted) {
+      setPolling(false);
+      setSession(current => current?.sessionId === session.sessionId && current.requestUrl ? { ...current, requestUrl: "" } : current);
+    }
   }, [api, session, ruleId]);
+  useEffect(() => {
+    if (!session) return;
+    const controller = new AbortController();
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void checkProof(controller.signal).catch(() => {
+        if (!controller.signal.aborted) setError("Couldn’t check verification status. Use Check proof status to retry.");
+      });
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [session, checkProof]);
   useEffect(() => {
     if (!polling || !session) return;
     let cancelled = false;
@@ -182,7 +211,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
         {rule.definition.alternatives.map((selection, i) => <div key={`${selection.route}-${i}`} className={styles.route}>
           <p><strong>{selection.route === "spotify_saved_track" ? "Spotify saved track" : "YouTube subscription"}</strong><br />{selection.targetId}<br />Before {selection.cutoff} (UTC)</p>
           <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !consent || evaluation?.status === "eligible"} onClick={() => run(async () => {
-            const result = await api<SessionView>("sessions", { ruleId, selection, consent });setSession(result);setPolling(true);setStatus("Open Reclaim Verifier and sign in. Early will update when your proof arrives.");
+            const result = await api<SessionView>("sessions", { ruleId, selection, consent });setSession(result);setVerified(false);setPolling(true);setStatus("Open Reclaim Verifier and sign in. Early will update when your proof arrives.");
           })}>Verify {selection.route === "spotify_saved_track" ? "Spotify" : "YouTube"} activity</button>
         </div>)}
       </>}
@@ -190,10 +219,11 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
         <p>On your phone, open Reclaim Verifier. On a computer, scan the QR code with your phone. Sign into the source account you used to save the song or subscribe to the channel. You do not need to play anything or change your existing support.</p>
         {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
         <p><a href={session.requestUrl} target="_blank" rel="noreferrer">Open Reclaim Verifier</a> · Expires {new Date(session.expiresAt).toLocaleTimeString()}</p></>}
+        {verified && <p role="status">Your verified support is in your private archive. <Link href="/dashboard#support">View my support →</Link></p>}
         <button className={styles.button} disabled={busy} onClick={() => run(checkProof)}>Check proof status</button>
       </div>}
       <section id="save-support" className={styles.route} aria-labelledby="save-support-title"><h3 id="save-support-title">Save support before a campaign exists</h3>
-        <StandaloneProof busy={busy} resolve={(route, link) => api<SupportTarget>("resolve-target", { route, link })} start={selection => run(async () => {setPolling(false);setSession(null);const created=await api<SessionView>("sessions", { selection, consent: true });setRuleId("");setEvaluation(null);setSession(created);setPolling(true);setStatus("Open Reclaim Verifier and sign in. The selected activity will be saved only after its proof is verified.");})} />
+        <StandaloneProof busy={busy} resolve={(route, link) => api<SupportTarget>("resolve-target", { route, link })} start={selection => run(async () => {setPolling(false);setSession(null);const created=await api<SessionView>("sessions", { selection, consent: true });setRuleId("");setEvaluation(null);setSession(created);setVerified(false);setPolling(true);setStatus("Open Reclaim Verifier and sign in. The selected activity will be saved only after its proof is verified.");})} />
       </section>
     </section>
     <section className={styles.section}>

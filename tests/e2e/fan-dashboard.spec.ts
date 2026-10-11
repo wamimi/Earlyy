@@ -25,3 +25,12 @@ test("campaign deep links require sign-in and retain an accessible main landmark
   await page.getByRole("link", { name: "Close campaign details" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 });
+
+test("support archive links survive reloads", async ({ page }) => {
+  await page.goto("/dashboard#support");
+  await expect(page.getByRole("heading", { name: "My support." })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your archive is private." })).toBeVisible();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await expect(page).not.toHaveURL(/#support$/);
+});

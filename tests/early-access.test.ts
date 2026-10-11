@@ -32,3 +32,13 @@ it("permits published campaigns only while their organization is approved", asyn
   store.one.mockImplementation(async table => table === "early_rules" ? {id:"r",published_at:"date",organization_id:"o"} : table === "early_organizations" ? {id:"o"} : null);
   expect((await visibleRule("r",user.user_id)).id).toBe("r");
 });
+it("recovers a completed session after expiry without losing its evidence", async () => {
+  store.one.mockResolvedValue({ id:"s", wallet:user.wallet, proof_identifier:"proof", evidence_id:"record",
+    expires_at:"2020-01-01T00:00:00Z", last_error_code:null });
+  expect(await action("session-status", { sessionId:"s" }, user)).toMatchObject({status:"verified", evidenceId:"record", rewardReady:false});
+});
+it("keeps a rejected proof distinct from saved support", async () => {
+  store.one.mockResolvedValue({id:"s",wallet:user.wallet,proof_identifier:null,evidence_id:null,
+    expires_at:new Date(Date.now()+60000).toISOString(),last_error_code:"INVALID_PROOF_RECIPE"});
+  expect(await action("session-status",{sessionId:"s"},user)).toMatchObject({status:"technical_failure",evidenceId:null,errorCode:"INVALID_PROOF_RECIPE"});
+});

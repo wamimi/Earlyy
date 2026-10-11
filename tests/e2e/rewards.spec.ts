@@ -5,10 +5,18 @@ test("rewards entry explains testnet and acceptance gates without claiming a pay
   await expect(page.getByRole("heading",{name:"Your support has a history."})).toBeVisible();
   await expect(page.getByText(/Test rewards use test MON/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Sign in to continue"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Benefit activity"})).toHaveCount(0);
   await expect(page.getByText(/reward claims are awaiting device/)).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
   await page.screenshot({path:`test-results/rewards-${test.info().project.name}.png`,fullPage:true});
+});
+test("unavailable account services keep sign-in disabled and reward controls inaccessible",async({page})=>{
+  await page.route("https://auth.privy.io/**",route=>route.abort());
+  await page.goto("/rewards");
+  await expect(page.getByRole("button",{name:"Sign in to continue"})).toBeDisabled();
+  await expect(page.getByText(/Connecting to account services/)).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Benefit activity"})).toHaveCount(0);
 });
 test("new mutation API rejects untrusted origins and unauthenticated wallets",async({request})=>{
   const data={wallet:"0x0000000000000000000000000000000000000001"};

@@ -55,11 +55,44 @@ function Dashboard({ campaignId }: { campaignId?: string }) {
     const timer = setTimeout(() => void load(controller.signal), 0);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [auth.ready, auth.authenticated, auth.walletAddress, load]);
+  useEffect(() => {
+    const restoreView = () => {
+      setView(window.location.hash === "#support" ? "support" : "discover");
+    };
+    const timer = setTimeout(restoreView, 0);
+    window.addEventListener("hashchange", restoreView);
+    return () => { clearTimeout(timer); window.removeEventListener("hashchange", restoreView); };
+  }, []);
+  useEffect(() => {
+    if (!auth.ready || !auth.authenticated || !auth.walletAddress) return;
+    let controller: AbortController | undefined;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      controller?.abort();
+      controller = new AbortController();
+      void load(controller.signal);
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [auth.ready, auth.authenticated, auth.walletAddress, load]);
   const selected = campaigns.find(c => c.id === campaignId);
   const connected = auth.authenticated && Boolean(auth.walletAddress);
   const visible = campaigns.filter(c => platform === "all" || c.definition.alternatives.some(a => platform === "spotify" ? a.route === "spotify_saved_track" : a.route === "youtube_subscription"));
   const Content = campaignId && view === "discover" ? "section" : "main";
-  function navigate(next: View) { setView(next); }
+  function navigate(next: View) {
+    setView(next);
+    const url = new URL(window.location.href);
+    url.hash = next === "support" ? "support" : "";
+    window.history.replaceState(window.history.state, "", url);
+    if (next === "support" && connected) void load();
+  }
   return <div className={s.shell}>
     <a className={s.skip} href={campaignId && view === "discover" ? "#campaign-content" : "#fan-content"}>Skip to content</a>
     <aside className={s.sidebar}>
