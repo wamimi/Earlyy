@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight, Gift, LockKeyhole, ShieldCheck } from "lucide-react";
+import { DashboardSidebar } from "./fan-dashboard/dashboard-sidebar";
+import dashboard from "./fan-dashboard/fan-dashboard.module.css";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { BrowserProvider, formatEther, getAddress, parseEther } from "ethers";
 import { QRCodeSVG } from "qrcode.react";
@@ -8,6 +11,7 @@ import { useEarlyAuth } from "./early-auth";
 import type { Evaluation, Rule, RuleRoute } from "@/lib/early/model";
 import type { SupportTarget } from "@/lib/early/targets";
 import { proofStatusText } from "@/lib/early/proof-status";
+import { supportProviders } from "./fan-dashboard/support-providers";
 import styles from "./rewards-workspace.module.css";
 
 type RuleView = { id: string; commitment: string; creator_wallet: string; definition: Rule };
@@ -17,28 +21,45 @@ type Indexed = { status: string; benefit: { funded: string; paid: string; refund
   claims: { id: string; beneficiary: string; amount: string; transactionHash: string }[];
   creator: { funded: string; paid: string; refunded: string; benefits: string; claims: string } | null };
 
-export function RewardsWorkspace({ deployed, initialSessionId, initialBenefitId }: { deployed: boolean; initialSessionId?: string; initialBenefitId?: string }) {
+type WorkspaceProps = { deployed: boolean; initialSessionId?: string; initialBenefitId?: string; initialActivity?: RuleRoute["route"] };
+
+export function RewardsWorkspace({ deployed, initialSessionId, initialBenefitId, initialActivity }: WorkspaceProps) {
   const auth = useEarlyAuth();
   const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
-  return <main className={styles.page}>
-    <Link href="/">← Early</Link>
-    <p className={styles.meta}>Monad testnet · Support & rewards</p>
-    <h1>Your support has a history.</h1>
-    <p>Verify an activity you choose, check a creator’s rules, and claim an available reward. Your source account and private proof stay off-chain.</p>
-    <p className={styles.notice}>Test rewards use test MON. Claims require verified qualifying support and an available funded campaign. Test MON does not represent merchandise or ticket fulfillment.</p>
-    {!deployed && <p className={styles.meta}>The reward contract is not deployed yet. You can prepare rules and support records; funding and claims will become available after setup.</p>}
-    {!hydrated ? <p role="status">Loading your account…</p> : !auth.ready || !auth.authenticated || !auth.walletAddress
-      ? <section className={styles.section}><h2>Connect your Early account</h2><p>Use your account wallet to keep support records and rewards together.</p>
-        <button className={styles.button} disabled={!auth.ready || !auth.configured} onClick={auth.login}>Sign in to continue</button>
-        {!auth.ready && <p role="status">Connecting to account services… If this persists, check your connection and reload the page.</p>}
-        {!auth.configured && <p>Account sign-in is not configured for this environment.</p>}</section>
-      : <Workspace key={auth.walletAddress} deployed={deployed} initialSessionId={initialSessionId} initialBenefitId={initialBenefitId} />}
-  </main>;
+  const connected = hydrated && auth.ready && auth.authenticated && Boolean(auth.walletAddress);
+  return <div className={dashboard.shell}>
+    <a className={dashboard.skip} href="#reward-content">Skip to content</a>
+    <DashboardSidebar active="rewards" />
+    <main id="reward-content" className={`${dashboard.main} ${styles.page}`}>
+      <header className={dashboard.topbar}><span>Your corner of Early</span>{connected ? <span className={dashboard.accountPill}><span />{auth.walletAddress.slice(0,6)}…{auth.walletAddress.slice(-4)}</span> : <span className={dashboard.badge}>Open for testing</span>}</header>
+      <div className={dashboard.heading}><span className={dashboard.eyebrow}>Your support. Something more.</span><h1>Your rewards.</h1><p>Check what your verified support could unlock.</p></div>
+      {initialActivity && <p className={styles.selection}><ShieldCheck size={17} /><strong>{supportProviders.find(provider => provider.route === initialActivity)?.action}</strong><Link href="/dashboard#providers">Choose another provider</Link></p>}
+      {!hydrated ? <div className={dashboard.skeleton} role="status">Loading your account…</div> : !connected
+        ? <>
+          <section className={dashboard.welcome} aria-labelledby="rewards-signin-title"><div className={dashboard.ticketArt}><Gift size={42} strokeWidth={1.3} /></div><div><span className={dashboard.badge}>Open to everyone</span><h2 id="rewards-signin-title">Your support has a history.</h2><p>Sign in to verify an activity, check campaign eligibility, and claim an available reward.</p><button className={dashboard.primary} disabled={!auth.ready || !auth.configured} onClick={auth.login}>Sign in to continue <ArrowRight size={17} /></button><small>No platform history is shared when you sign in.</small>
+            {!auth.ready && <p role="status">Connecting to account services… If this persists, check your connection and reload the page.</p>}
+            {!auth.configured && <p>Account sign-in is not configured for this environment.</p>}
+            {auth.ready && auth.authenticated && !auth.walletAddress && <p role="status">Your account wallet is getting ready.</p>}
+          </div></section>
+          <section className={styles.journey} aria-label="How rewards work"><div><ShieldCheck size={22} /><h3>Verify your support</h3><p>Choose a Spotify save, YouTube subscription, or video like.</p></div><div><LockKeyhole size={22} /><h3>Check a campaign</h3><p>See whether your saved record meets its published rules.</p></div><div><Gift size={22} /><h3>Claim a reward</h3><p>Eligible support can unlock an available funded reward.</p></div></section>
+          <Link className={dashboard.textButton} href="/dashboard#providers">Explore the three providers <ArrowRight size={16} /></Link>
+        </>
+        : <Workspace key={`${auth.walletAddress}:${initialActivity ?? ""}`} deployed={deployed} initialSessionId={initialSessionId} initialBenefitId={initialBenefitId} initialActivity={initialActivity} />}
+      <aside className={styles.notice}><strong>Monad testnet</strong><p>Test rewards use test MON. Claims require verified qualifying support and an available funded campaign. Test MON does not represent merchandise or ticket fulfillment.</p>{!deployed && <p>Reward funding and claims are unavailable until the reward contract is configured. You can still verify support.</p>}</aside>
+      <footer className={dashboard.footer}><ShieldCheck size={13} />Your proof. Your choice.<Link href="/developers#privacy">How privacy works <ArrowRight size={13} /></Link></footer>
+    </main>
+  </div>;
 }
+
 const subscribeHydration = () => () => {};
 
-function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed: boolean; initialSessionId?: string; initialBenefitId?: string }) {
+function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivity }: WorkspaceProps) {
   const auth = useEarlyAuth();
+  const supportPanel = useRef<HTMLElement>(null);
+  const [panel, setPanel] = useState<"rewards" | "verify" | "manage">(() => initialActivity || initialSessionId || (typeof window !== "undefined" && window.location.hash === "#save-support") ? "verify" : "rewards");
+  useEffect(() => {
+    if (initialActivity && !initialSessionId) supportPanel.current?.scrollIntoView({ block: "start" });
+  }, [initialActivity, initialSessionId]);
   const [rules, setRules] = useState<RuleView[]>([]);
   const [ruleId, setRuleId] = useState("");
   const [consent, setConsent] = useState(false);
@@ -138,7 +159,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
   async function loadRules() {
     const result = await api<{ rules: RuleView[] }>("list-rules", { includeDrafts: access?.team === true });setRules(result.rules);
     if (!ruleId && result.rules[0]) setRuleId(result.rules[0].id);
-    setStatus(result.rules.length ? "Choose an opportunity to check your support." : "No rules yet. A creator can prepare the first one below.");
+    setStatus(result.rules.length ? "Choose an opportunity to check your support." : "No campaigns are available yet. You can verify support in the meantime.");
   }
   async function refreshIndexed(id = benefitId, hash = txHash) {
     if (!id) return;
@@ -193,11 +214,20 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
     await reconcile(sent.hash);
   }
   return <>
-    <p className={styles.wallet}>Account wallet: {auth.walletAddress}{balance && ` · ${balance} test MON`}</p>
+    <div className={styles.switcher} role="group" aria-label="Reward workspace sections"><button aria-pressed={panel === "rewards"} onClick={() => setPanel("rewards")}>Campaign rewards</button><button aria-pressed={panel === "verify"} onClick={() => setPanel("verify")}>Verify support</button>{access?.team && <button aria-pressed={panel === "manage"} onClick={() => setPanel("manage")}>Manage campaigns</button>}</div>
+    <details className={styles.accountDetails}><summary>Account wallet{balance && ` · ${balance} test MON`}</summary><p className={styles.wallet}>{auth.walletAddress}</p></details>
     <div className={styles.status} role="status" aria-live="polite">{status}</div>
     {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
-    <section className={styles.section}>
-      <h2>Check your support</h2>
+      {session && <div className={styles.handoff} ref={verificationPanel} tabIndex={-1} aria-label="Complete verification">
+        <p>On your phone, open Reclaim Verifier. On a computer, scan the QR code with your phone. Sign into the source account you used to save the song, subscribe to the channel or like the video. You do not need to play anything or change your existing support.</p>
+        {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
+        <p><a href={session.requestUrl} target="_blank" rel="noreferrer">Open Reclaim Verifier</a> · Expires {new Date(session.expiresAt).toLocaleTimeString()}</p></>}
+        {verified && <p role="status">Your verified support is in your private archive. <Link href="/dashboard#support">View my support →</Link></p>}
+        <button className={styles.button} disabled={busy} onClick={() => run(checkProof)}>Check proof status</button>
+      </div>}
+    <section className={styles.section} hidden={panel !== "rewards"}>
+      <div className={styles.sectionHeading}><h2>Find a qualifying campaign</h2><Link href="/dashboard">Browse campaigns <ArrowRight size={15} /></Link></div>
+      <p className={styles.meta}>Choose a campaign and check its rules against your saved support.</p>
       <div className={styles.row}><label className={styles.field}>Opportunity<select value={ruleId} onChange={e => { setRuleId(e.target.value);setEvaluation(null);setSession(null);setConsent(false); }}>
         <option value="">Choose an opportunity</option>{rules.map(r => <option key={r.id} value={r.id}>{r.definition.title}</option>)}</select></label>
         <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(loadRules)}>Load opportunities</button></div>
@@ -209,48 +239,43 @@ function Workspace({ deployed, initialSessionId, initialBenefitId }: { deployed:
         })}>Check saved records</button>
         {evaluation && <p>{evaluation.status.replaceAll("_", " ")}: {evaluation.reason}</p>}
         {rule.definition.alternatives.map((selection, i) => <div key={`${selection.route}-${i}`} className={styles.route}>
-          <p><strong>{selection.route === "spotify_saved_track" ? "Spotify saved track" : "YouTube subscription"}</strong><br />{selection.targetId}<br />Before {selection.cutoff} (UTC)</p>
+          <p><strong>{selection.route === "spotify_saved_track" ? "Spotify saved track" : selection.route === "youtube_like" ? "YouTube video like" : "YouTube subscription"}</strong><br />{selection.targetId}<br />Before {selection.cutoff} (UTC)</p>
           <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !consent || evaluation?.status === "eligible"} onClick={() => run(async () => {
             const result = await api<SessionView>("sessions", { ruleId, selection, consent });setSession(result);setVerified(false);setPolling(true);setStatus("Open Reclaim Verifier and sign in. Early will update when your proof arrives.");
           })}>Verify {selection.route === "spotify_saved_track" ? "Spotify" : "YouTube"} activity</button>
         </div>)}
       </>}
-      {session && <div ref={verificationPanel} tabIndex={-1} aria-label="Complete verification">
-        <p>On your phone, open Reclaim Verifier. On a computer, scan the QR code with your phone. Sign into the source account you used to save the song or subscribe to the channel. You do not need to play anything or change your existing support.</p>
-        {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
-        <p><a href={session.requestUrl} target="_blank" rel="noreferrer">Open Reclaim Verifier</a> · Expires {new Date(session.expiresAt).toLocaleTimeString()}</p></>}
-        {verified && <p role="status">Your verified support is in your private archive. <Link href="/dashboard#support">View my support →</Link></p>}
-        <button className={styles.button} disabled={busy} onClick={() => run(checkProof)}>Check proof status</button>
-      </div>}
-      <section id="save-support" className={styles.route} aria-labelledby="save-support-title"><h3 id="save-support-title">Save support before a campaign exists</h3>
-        <StandaloneProof busy={busy} resolve={(route, link) => api<SupportTarget>("resolve-target", { route, link })} start={selection => run(async () => {setPolling(false);setSession(null);const created=await api<SessionView>("sessions", { selection, consent: true });setRuleId("");setEvaluation(null);setSession(created);setVerified(false);setPolling(true);setStatus("Open Reclaim Verifier and sign in. The selected activity will be saved only after its proof is verified.");})} />
-      </section>
     </section>
-    <section className={styles.section}>
-      <h2>Benefit activity</h2><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
-      <p className={styles.meta}>{auth.canSponsorClaims ? "Claims from your Early wallet request sponsored gas through Privy. You do not need MON for claim fees when sponsorship is available." : "Claims from an external wallet require test MON for gas."} Campaign funding and refunds use the funding wallet’s gas.</p>
+    <section ref={supportPanel} hidden={panel !== "verify"} id="save-support" className={styles.section} aria-labelledby="save-support-title"><h2 id="save-support-title">Verify your support</h2>
+        <StandaloneProof initialActivity={initialActivity} busy={busy} resolve={(route, link) => api<SupportTarget>("resolve-target", { route, link })} start={selection => run(async () => {setPolling(false);setSession(null);const created=await api<SessionView>("sessions", { selection, consent: true });setRuleId("");setEvaluation(null);setSession(created);setVerified(false);setPolling(true);setStatus("Open Reclaim Verifier and sign in. The selected activity will be saved only after its proof is verified.");})} />
+    </section>
+    <section className={styles.section} hidden={panel !== "rewards"}>
+      <h2>Claim your reward</h2><p className={styles.meta}>Enter the reward ID shared by the campaign organizer to check availability and claim.</p>
+      <details className={styles.explainer}><summary>How claims and fees work</summary><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
+      <p className={styles.meta}>{auth.canSponsorClaims ? "Claims from your Early wallet request sponsored gas through Privy. You do not need MON for claim fees when sponsorship is available." : "Claims from an external wallet require test MON for gas."} Campaign funding and refunds use the funding wallet’s gas.</p></details>
       <div className={styles.row}><label className={styles.field}>Benefit ID<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label>
         <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => refreshIndexed())}>Refresh activity</button>
         <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"))}>Check eligibility & claim</button></div>
-      <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("refund"))}>Refund expired benefit (funding wallet only)</button>
+      <details className={styles.explainer}><summary>Funding wallet tools</summary><p>Unclaimed funds can be refunded after the campaign expires, by its funding wallet.</p><button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("refund"))}>Refund expired benefit</button></details>
       {txHash && <p><a href={`https://testnet.monadvision.com/tx/${txHash}`} target="_blank" rel="noreferrer">View transaction</a> · <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(() => reconcile())}>Check confirmation</button></p>}
       {indexed && <p>Activity feed: {indexed.status.replaceAll("_", " ")}. {indexed.status === "unavailable" || indexed.status === "not_configured" ? "This does not mean a confirmed payment failed." : ""}</p>}
       {indexed?.benefit && <p>Funded {formatEther(indexed.benefit.funded)} MON · Paid {formatEther(indexed.benefit.paid)} MON · Remaining {formatEther(indexed.benefit.remaining)} MON · {BigInt(indexed.benefit.capacity) - BigInt(indexed.benefit.claims)} places left</p>}
       {indexed?.creator && <p>Creator totals: {indexed.creator.benefits} benefits · {indexed.creator.claims} claims · {formatEther(indexed.creator.paid)} MON paid · {formatEther(indexed.creator.refunded)} MON refunded</p>}
       {indexed?.claims.length ? <div className={styles.scroll}><table className={styles.table}><caption>Confirmed indexed claims</caption><thead><tr><th>Recipient</th><th>Test MON</th><th>Transaction</th></tr></thead><tbody>{indexed.claims.map(c => <tr key={c.id}><td>{c.beneficiary}</td><td>{formatEther(c.amount)}</td><td><a href={`https://testnet.monadvision.com/tx/${c.transactionHash}`}>View</a></td></tr>)}</tbody></table></div> : null}
     </section>
-    {access?.team ? <section className={styles.section}><h2>Early campaign management</h2><p>Define immutable reward terms. Funding can be added during the claim window; unclaimed funds can be refunded after it closes.</p>
+    {access?.team ? <section className={styles.section} hidden={panel !== "manage"}><h2>Early campaign management</h2><p>Define immutable reward terms. Funding can be added during the claim window; unclaimed funds can be refunded after it closes.</p>
+      <div className={styles.row}><label className={styles.field}>Saved campaign<select value={ruleId} onChange={e => {setRuleId(e.target.value);setEvaluation(null);setSession(null);setConsent(false);}}><option value="">Choose a campaign</option>{rules.map(r => <option key={r.id} value={r.id}>{r.definition.title}</option>)}</select></label><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(loadRules)}>Load saved campaigns</button><label className={styles.field}>Reward ID to manage<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label></div>
       <RuleForm disabled={busy} create={definition => run(async () => {
         const saved = await api<RuleView>("rules", { rule: definition });await loadRules();setRuleId(saved.id);setStatus("Rule saved. Review the terms before funding the benefit.");
       })} />
       <div className={styles.row}><label className={styles.field}>Approved partner<select value={organizationId} onChange={e => setOrganizationId(e.target.value)}><option value="">Choose partner</option>{access.organizations.map(o => <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>)}</select></label><button className={styles.button} disabled={busy || !rule || !organizationId} onClick={() => run(async () => { await api("publish-rule", {ruleId,organizationId});setStatus("Campaign published to the fan dashboard."); })}>Publish campaign</button></div>
       <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount))} />
-    </section> : <section className={styles.section}><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Work with Early</Link></section>}
+    </section> : <details className={styles.partner}><summary>For artists & brands</summary><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Explore campaign ideas</Link></details>}
   </>;
 }
 
-function StandaloneProof({ busy, start, resolve }: { busy: boolean; start: (r: RuleRoute) => void; resolve: (route: RuleRoute["route"], link: string) => Promise<SupportTarget> }) {
-  const [route, setRoute] = useState<RuleRoute["route"]>("spotify_saved_track");
+function StandaloneProof({ busy, start, resolve, initialActivity }: { busy: boolean; start: (r: RuleRoute) => void; resolve: (route: RuleRoute["route"], link: string) => Promise<SupportTarget>; initialActivity?: RuleRoute["route"] }) {
+  const [route, setRoute] = useState<RuleRoute["route"]>(initialActivity ?? "spotify_saved_track");
   const [consent, setConsent] = useState(false);
   const [link, setLink] = useState("");
   const [target, setTarget] = useState<SupportTarget | null>(null);

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('brand campaign preview leads to the brand waitlist', async ({ page }, testInfo) => {
+test('brand campaign preview links to the available workspace', async ({ page }, testInfo) => {
   await page.goto('/brands');
   await expect(page.getByRole('heading', {name:'Reward the people behind your growth.'})).toBeVisible();
   await expect(page.locator('.br-reward-descriptions h3')).toHaveCount(4);
@@ -8,8 +8,8 @@ test('brand campaign preview leads to the brand waitlist', async ({ page }, test
   await page.getByLabel('Support before').fill('2026-11-01');
   await page.getByRole('radio', {name:'Products', exact:true}).check();
   await expect(page.getByRole('radio', {name:'Ship a product'})).toBeChecked();
-  await expect(page.getByRole('link', {name:'Campaign planning coming soon'})).toHaveAttribute('href', '/waitlist?interest=brand');
-  await expect(page.getByRole('link', {name:'Join the brand waitlist'}).first()).toHaveAttribute('href', '/waitlist?interest=brand');
+  await expect(page.getByRole('link', {name:'Open campaign workspace'})).toHaveAttribute('href', '/rewards');
+  await expect(page.getByRole('link', {name:'Campaign workspace'}).first()).toHaveAttribute('href', '/rewards');
   await page.getByRole('radio', {name:'Cash rewards', exact:true}).check();
   await expect(page.getByRole('radio', {name:'Send a payout'})).toBeChecked();
   await page.getByRole('radio', {name:'Tickets', exact:true}).check();

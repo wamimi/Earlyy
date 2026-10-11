@@ -34,7 +34,7 @@ export function SiteHeader({ action }: { action?: ReactNode } = {}) {
       </nav>
 
       <div className="header-actions">
-        {action ?? <Link className="button button-small button-dark" href="/waitlist">Join the waitlist</Link>}
+        {action ?? <Link className="button button-small button-dark" href="/dashboard">Open Early</Link>}
         <button
           className="menu-button"
           type="button"

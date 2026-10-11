@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('campaign reward previews and creator waitlist work', async ({ page }, testInfo) => {
+test('campaign reward previews and workspace links work', async ({ page }, testInfo) => {
   await page.goto('/campaigns');
   await expect(page.getByRole('heading', { name: 'Your support opens doors.' })).toBeVisible();
   await expect(page.locator('.cp-opportunity')).toHaveCount(3);
@@ -10,15 +10,15 @@ test('campaign reward previews and creator waitlist work', async ({ page }, test
   await page.getByRole('button', { name: 'Explore First in. First access.' }).click();
   const detail = page.getByRole('dialog', { name: 'First in. First access.' });
   await expect(detail).toBeVisible();
-  await expect(detail.getByText('Public campaigns haven’t launched yet.', { exact: false })).toBeVisible();
+  await expect(detail.getByText('This is a campaign idea.', { exact: false })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(detail).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Explore First in. First access.' })).toBeFocused();
   await page.getByRole('button', { name: 'Communities', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your people. Your place.' })).toBeVisible();
   await page.getByRole('button', { name: 'Music', exact: true }).click();
-  await expect(page.getByRole('link', {name:'Join as a creator'})).toHaveAttribute('href', '/waitlist?interest=creator');
-  await expect(page.getByRole('link', {name:'Campaign creation coming soon'})).toHaveAttribute('href', '/waitlist?interest=creator');
+  await expect(page.getByRole('link', {name:'Campaign workspace'})).toHaveAttribute('href', '/rewards');
+  await expect(page.getByRole('link', {name:'Plan a campaign'})).toHaveAttribute('href', '/brands#planner');
   await page.evaluate(async () => { await Promise.all(Array.from(document.images).map(image => image.decode().catch(() => {}))); });
   expect(await page.locator('.cp-hero-background').evaluate((el: HTMLImageElement) => el.naturalWidth > 0)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
