@@ -47,3 +47,22 @@ it("rejects mixed-account Spotify records after signature verification",async()=
 it("compares callback capabilities without accepting malformed tokens",()=>{
   expect(matchesToken("secret",tokenHash("secret"))).toBe(true);expect(matchesToken("other",tokenHash("secret"))).toBe(false);expect(matchesToken("secret","bad")).toBe(false);
 });
+it.each([
+  ["ProofNotValidatedError", "INVALID_PROOF_RECIPE"],
+  ["UnknownProofsNotValidatedError", "INVALID_PROOF_RECIPE"],
+  ["ProofNotVerifiedError", "INVALID_PROOF_SIGNATURE"],
+  ["TeeVerificationError", "INVALID_PROOF_ATTESTATION"],
+  ["BackendServerError", "PROOF_VERIFICATION_UNAVAILABLE"],
+])("reports %s without exposing private SDK diagnostics", async (name, code) => {
+  const { s, proof } = fixture();
+  const error = Object.assign(new Error("private source history and callback token"), { name });
+  sdk.verifyProof.mockResolvedValue({ isVerified: false, error });
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    await expect(verifySession([proof], s)).rejects.toMatchObject({ code });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(error.message);
+    expect(warning).toHaveBeenCalledWith("early.proof_verification_failed", {
+      sessionId: s.id, route: s.route, providerVersion: s.provider_version, code,
+    });
+  } finally { warning.mockRestore(); }
+});

@@ -1,6 +1,7 @@
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { ReclaimProofRequest, verifyProof, type Proof } from "@reclaimprotocol/js-sdk";
 import { getAddress } from "ethers";
+import { proofFailure } from "./proof-failure";
 import { spotifySavedTrackEvidence, youtubeSubscriptionEvidence } from "../activity-evidence";
 import { encryptRawProof } from "../proof-encryption";
 import { applicationUrl } from "../origins";
@@ -64,7 +65,12 @@ export async function verifySession(proofs: Proof[], session: Session): Promise<
   assertSessionBinding(proofs[0], session);
   const result = await verifyProof(proofs, { hashes: [session.recipe_hash],
     ...(process.env.RECLAIM_REQUIRE_TEE_ATTESTATION === "true" ? { teeAttestation: { appSecret: requireSetting("RECLAIM_APP_SECRET") } } : {}) });
-  ensure(result.isVerified, "INVALID_PROOF", "Signature, attestor or exact recipe verification failed.");
+  if (!result.isVerified) {
+    const failure = proofFailure(result.error);
+    console.warn("early.proof_verification_failed", { sessionId: session.id, route: session.route,
+      providerVersion: session.provider_version, code: failure.code });
+    throw new EarlyError(failure.code, failure.message, failure.status);
+  }
   ensure(result.data.length === 1, "PROOF_COUNT_MISMATCH", "Unexpected number of verified records.");
   const fields = result.data[0].extractedParameters;
   const activity = session.route === "spotify_saved_track" ? spotifySavedTrackEvidence(fields) : youtubeSubscriptionEvidence(fields);
