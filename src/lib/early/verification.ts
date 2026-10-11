@@ -3,6 +3,7 @@ import { ReclaimProofRequest, verifyProof, type Proof } from "@reclaimprotocol/j
 import { getAddress } from "ethers";
 import { proofFailure } from "./proof-failure";
 import { spotifyRecipeDiagnostics } from "./recipe-diagnostics";
+import { spotifyVerificationHashes } from "./spotify-recipe";
 import { spotifySavedTrackEvidence, youtubeSubscriptionEvidence } from "../activity-evidence";
 import { encryptRawProof } from "../proof-encryption";
 import { applicationUrl } from "../origins";
@@ -64,7 +65,9 @@ export function assertSessionBinding(proof: Proof, session: Session, now = Date.
 export async function verifySession(proofs: Proof[], session: Session): Promise<Evidence> {
   ensure(proofs.length === 1, "PROOF_COUNT_MISMATCH", "This route requires exactly one complete activity proof.");
   assertSessionBinding(proofs[0], session);
-  const result = await verifyProof(proofs, { hashes: [session.recipe_hash],
+  const hashes = session.route === "spotify_saved_track"
+    ? spotifyVerificationHashes(proofs[0].claimData.parameters, session.recipe_hash) : [session.recipe_hash];
+  const result = await verifyProof(proofs, { hashes,
     ...(process.env.RECLAIM_REQUIRE_TEE_ATTESTATION === "true" ? { teeAttestation: { appSecret: requireSetting("RECLAIM_APP_SECRET") } } : {}) });
   if (!result.isVerified) {
     const failure = proofFailure(result.error);
