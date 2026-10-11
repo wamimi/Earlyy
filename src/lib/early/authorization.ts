@@ -4,7 +4,6 @@ import { benefitSnapshot } from "./chain";
 import { ensure } from "./errors";
 import { evaluate, ruleCommitment } from "./model";
 import { sourceNullifier } from "./nullifiers";
-import { requireRewardAcceptance } from "./providers";
 import { localTestnetSigner } from "./signing";
 import { db, one, ownedEvidence, type StoredRule } from "./store";
 import type { Authorization } from "./escrow-interface";
@@ -22,7 +21,6 @@ export async function authorizeBenefit(userId: string, wallet: string, benefitId
   await db("early_evaluations", "POST", { user_id: userId, rule_id: rule.id, result: evaluation });
   ensure(evaluation.status === "eligible", "NOT_ELIGIBLE", evaluation.reason, 409);
   const selected = records.filter(r => evaluation.evidenceIds.includes(r.id));
-  selected.forEach(r => requireRewardAcceptance(r.evidence.route));
   const now = Math.max(Math.floor(Date.now() / 1000), block.timestamp);
   ensure(!b.closed && BigInt(now) < b.expiry && b.remaining >= b.payout && b.claims < b.capacity,
     "BENEFIT_UNAVAILABLE", "The claim window, remaining funds or capacity do not permit a claim.", 409);

@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
-test("rewards entry explains testnet and acceptance gates without claiming a payout",async({page})=>{
+test("rewards entry explains testnet and eligibility requirements without claiming a payout",async({page})=>{
   const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
   await page.goto("/rewards");
   await expect(page.getByRole("heading",{name:"Your support has a history."})).toBeVisible();
   await expect(page.getByText(/Test rewards use test MON/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Sign in to continue"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Benefit activity"})).toHaveCount(0);
-  await expect(page.getByText(/reward claims are awaiting device/)).toBeVisible();
+  await expect(page.getByText(/Claims require verified qualifying support/)).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
   await page.screenshot({path:`test-results/rewards-${test.info().project.name}.png`,fullPage:true});

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { evaluate, parseRule, parseRoute, utcMicros, ruleCommitment, type Evidence, type Rule } from "../src/lib/early/model";
 import { inspectAlternatives } from "../src/lib/early/orchestration";
 import { eventKey, sourceKey, sourceNullifier } from "../src/lib/early/nullifiers";
-import { requireRewardAcceptance } from "../src/lib/early/providers";
+import { capabilities } from "../src/lib/early/providers";
 
 export const spotifyTarget = `spotify:track:${"a".repeat(22)}`;
 export const channel = `UC${"b".repeat(22)}`;
@@ -63,9 +63,9 @@ describe("eligibility semantics", () => {
     expect(ruleCommitment(rule)).toBe(ruleCommitment(parseRule({...rule,irrelevant:true})));
     expect(ruleCommitment(rule)).not.toBe(ruleCommitment({...rule,capacity:3}));
   });
-  it("gates every live route independently of fixtures or credentials", () => {
-    expect(()=>requireRewardAcceptance("spotify_saved_track")).toThrow(/acceptance/);
-    expect(()=>requireRewardAcceptance("youtube_subscription")).toThrow(/acceptance/);
+  it("enables supported reward routes without enabling unfinished activities", () => {
+    const enabled = capabilities().filter(c => c.rewardReady).map(c => c.route);
+    expect(enabled).toEqual(["spotify_saved_track", "youtube_subscription", "youtube_like"]);
   });
   it("uses stable, domain-separated keyed identities and rejects key-version changes", () => {
     vi.stubEnv("EARLY_SOURCE_NULLIFIER_SECRET",Buffer.alloc(32,7).toString("base64"));vi.stubEnv("EARLY_SOURCE_NULLIFIER_KEY_VERSION","1");

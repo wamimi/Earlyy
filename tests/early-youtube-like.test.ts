@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { youtubeLikeEvidence, youtubeSubscriptionEvidence } from '../src/lib/activity-evidence';
 import { parseRoute, evaluate, type Evidence, type Rule } from '../src/lib/early/model';
 import { parseTargetLink } from '../src/lib/early/targets';
-import { requireRewardAcceptance, providers, capabilities } from '../src/lib/early/providers';
+import { providers, capabilities } from '../src/lib/early/providers';
 import { activityLabel, targetLink } from '../src/components/fan-dashboard/model';
 const video = 'dQw4w9WgXcQ', channel = 'UCuAXFkgsw1L7xaCfnd5JJOw';
 const fields = { source_account_id: '123456789', video_id: video, channel_id: channel, activity_timestamp: '1700000000000000' };
@@ -30,9 +30,8 @@ it('enforces exact cutoff precision and counts repeated copies only once',()=>{
  expect(evaluate({...rule,alternatives:[{...selection,cutoff:'2023-11-14T22:13:20.000Z'}]},[evidence]).status).toBe('not_qualifying');
  expect(evaluate({...rule,minimumDistinctEvents:2},[evidence,evidence]).status).toBe('not_qualifying');
 });
-it('keeps reward gates closed and labels links as video likes',()=>{
- expect(()=>requireRewardAcceptance('youtube_like')).toThrow(/acceptance/);
+it('enables the supported reward route and labels links as video likes',()=>{
  expect(capabilities().filter(c=>c.route==='youtube_like')).toHaveLength(1);
- expect(capabilities().find(c=>c.route==='youtube_like')?.rewardReady).toBe(false);
+ expect(capabilities().find(c=>c.route==='youtube_like')?.rewardReady).toBe(true);
  expect(activityLabel(selection)).toBe('Liked this video');expect(targetLink(selection)).toBe(`https://www.youtube.com/watch?v=${video}`);
 });
