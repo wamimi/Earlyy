@@ -2,6 +2,7 @@ import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { ReclaimProofRequest, verifyProof, type Proof } from "@reclaimprotocol/js-sdk";
 import { getAddress } from "ethers";
 import { proofFailure } from "./proof-failure";
+import { spotifyRecipeDiagnostics } from "./recipe-diagnostics";
 import { spotifySavedTrackEvidence, youtubeSubscriptionEvidence } from "../activity-evidence";
 import { encryptRawProof } from "../proof-encryption";
 import { applicationUrl } from "../origins";
@@ -68,7 +69,9 @@ export async function verifySession(proofs: Proof[], session: Session): Promise<
   if (!result.isVerified) {
     const failure = proofFailure(result.error);
     console.warn("early.proof_verification_failed", { sessionId: session.id, route: session.route,
-      providerVersion: session.provider_version, code: failure.code });
+      providerVersion: session.provider_version, code: failure.code,
+      ...(failure.code === "INVALID_PROOF_RECIPE" && session.route === "spotify_saved_track"
+        ? { recipe: spotifyRecipeDiagnostics(proofs[0].claimData.parameters, session.recipe_hash) } : {}) });
     throw new EarlyError(failure.code, failure.message, failure.status);
   }
   ensure(result.data.length === 1, "PROOF_COUNT_MISMATCH", "Unexpected number of verified records.");
