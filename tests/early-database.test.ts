@@ -5,6 +5,7 @@ let pg:PGlite;
 beforeAll(async()=>{
   pg=new PGlite();await pg.exec("create role anon; create role authenticated; create role service_role bypassrls;");
   await pg.exec(readFileSync("supabase/early_monad_v3.sql","utf8"));
+  await pg.exec(readFileSync("supabase/early_youtube_like_v6.sql","utf8"));
 },30000);
 beforeEach(async()=>{await pg.exec("truncate early_sessions,early_evidence,early_source_bindings,early_authorizations,early_evaluations,early_rules,early_chain_receipts cascade");});
 afterAll(async()=>{await pg.close();});
@@ -67,4 +68,17 @@ it("denies browser roles both private table access and security-definer RPC exec
   await pg.exec("set role authenticated");
   try { await expect(pg.query("select * from early_evidence")).rejects.toThrow(/permission denied/);await expect(pg.query("select early_purge_raw_proofs()")).rejects.toThrow(/permission denied/); }
   finally {await pg.exec("reset role");}
+});
+
+it("shares YouTube source ownership across subscription and video-like routes and deduplicates likes",async()=>{
+ await session('subscription','user-a','youtube');await complete('subscription','user-a','google-source','subscription-event','proof-sub','youtube');
+ for (const [id,user] of [['like-a','user-a'],['like-b','user-b'],['like-repeat','user-a']]) {
+   await session(id,user,'youtube');await pg.query("update early_sessions set route='youtube_like' where id=$1",[id]);
+ }
+ const like=(id:string,user:string,identifier:string)=>pg.query("select early_complete_session($1,$2,'wallet',$3,'google-source',$4::jsonb,'{}',24)",[id,user,identifier,JSON.stringify({id:'like-event',route:'youtube_like',platform:'youtube',providerId:'provider',providerVersion:'1',recipeHash:'hash'})]);
+ await expect(like('like-b','user-b','proof-b')).rejects.toThrow(/SOURCE_ALREADY_BOUND/);
+ await like('like-a','user-a','proof-a');await like('like-repeat','user-a','proof-repeat');
+ expect((await pg.query("select * from early_evidence where user_id='user-b'")).rows).toHaveLength(0);
+ expect((await pg.query("select * from early_evidence")).rows).toHaveLength(2);
+ expect((await pg.query("select * from early_source_bindings")).rows).toHaveLength(1);
 });

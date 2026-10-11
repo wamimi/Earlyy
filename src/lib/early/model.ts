@@ -2,7 +2,7 @@ import { getAddress, keccak256, toUtf8Bytes } from "ethers";
 import type { EarlyActivity } from "../activity-evidence";
 import { EarlyError, ensure } from "./errors";
 
-export const routeIds = ["spotify_saved_track", "youtube_subscription"] as const;
+export const routeIds = ["spotify_saved_track", "youtube_subscription", "youtube_like"] as const;
 export type RouteId = typeof routeIds[number];
 export type RuleRoute = {
   route: RouteId;
@@ -66,7 +66,9 @@ export function parseRoute(value: unknown): RuleRoute {
   ensure(routeIds.includes(r.route as RouteId), "UNSUPPORTED_ROUTE", "This activity route is not available.");
   const route = r.route as RouteId;
   const targetId = string(r.targetId);
-  ensure(route === "spotify_saved_track" ? /^spotify:(track|artist):[A-Za-z0-9]{22}$/.test(targetId) : /^UC[A-Za-z0-9_-]{22}$/.test(targetId), "INVALID_TARGET", "Invalid platform target ID.");
+  ensure(route === "spotify_saved_track" ? /^spotify:(track|artist):[A-Za-z0-9]{22}$/.test(targetId)
+    : route === "youtube_like" ? /^[A-Za-z0-9_-]{11}$/.test(targetId)
+    : /^UC[A-Za-z0-9_-]{22}$/.test(targetId), "INVALID_TARGET", "Invalid platform target ID.");
   utcMicros(r.cutoff);
   return { route, targetId, cutoff: new Date(string(r.cutoff)).toISOString() };
 }

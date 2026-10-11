@@ -12,3 +12,9 @@ it('pins the complete reviewed Spotify and YouTube request/body/redaction hashes
   const changedYoutube=structuredClone(youtube);changedYoutube.responseRedactions[2].xPath='//script';
   expect(hashProofClaimParams({...changedYoutube,body:''})).not.toEqual([providers.youtube_subscription.hash]);
 });
+it('pins all four video-like redactions and the exact authenticated source URL', async()=>{
+  const {youtubeLikeRecipe}=await import('../scripts/youtube-like-recipe.mjs');
+  const recipe={...youtubeLikeRecipe({timestamp:'1700000000000000',videoId:'dQw4w9WgXcQ',channelId:'UCuAXFkgsw1L7xaCfnd5JJOw'}),body:''};
+  expect(hashProofClaimParams(recipe)).toEqual([providers.youtube_like.hash]);
+  for(let i=0;i<4;i++){const changed=structuredClone(recipe);changed.responseRedactions[i].xPath='//script';expect(hashProofClaimParams(changed)).not.toEqual([providers.youtube_like.hash]);}
+});

@@ -16,7 +16,7 @@ export type Principal = { user_id: string; wallet: string };
 export async function action(operation: string, input: Record<string, unknown>, user: Principal): Promise<unknown> {
   switch (operation) {
     case "resolve-target": {
-      ensure(input.route === "spotify_saved_track" || input.route === "youtube_subscription", "UNSUPPORTED_ROUTE", "Choose Spotify or YouTube.");
+      ensure(input.route === "spotify_saved_track" || input.route === "youtube_subscription" || input.route === "youtube_like", "UNSUPPORTED_ROUTE", "Choose a supported Spotify or YouTube activity.");
       return resolveSupportTarget(input.route, string(input.link, 500));
     }
     case "access": return workspaceAccess(user.user_id);

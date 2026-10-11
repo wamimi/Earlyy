@@ -66,3 +66,15 @@ it.each([
     });
   } finally { warning.mockRestore(); }
 });
+it('verifies exact-video likes with the pinned recipe and rejects wrong-video and future records',async()=>{
+  const {s,proof}=fixture(); const p=providers.youtube_like;
+  Object.assign(s,{route:'youtube_like',provider_id:p.id,provider_version:p.version,recipe_hash:p.hash,selection:{route:'youtube_like',targetId:'dQw4w9WgXcQ',cutoff:'2026-12-01T00:00:00.000Z'}});
+  const fields={source_account_id:'12345',video_id:'dQw4w9WgXcQ',channel_id:target,activity_timestamp:'1700000000000000'};
+  sdk.verifyProof.mockResolvedValue({isVerified:true,data:[{extractedParameters:fields}]});
+  expect(await verifySession([proof],s)).toMatchObject({activity:'video_liked',targetId:'dQw4w9WgXcQ',channelId:target});
+  expect(sdk.verifyProof).toHaveBeenCalledWith([proof],{hashes:[p.hash]});
+  sdk.verifyProof.mockResolvedValue({isVerified:true,data:[{extractedParameters:{...fields,video_id:'aaaaaaaaaaa'}}]});
+  await expect(verifySession([proof],s)).rejects.toMatchObject({code:'WRONG_TARGET'});
+  sdk.verifyProof.mockResolvedValue({isVerified:true,data:[{extractedParameters:{...fields,activity_timestamp:'9999999999999999'}}]});
+  await expect(verifySession([proof],s)).rejects.toMatchObject({code:'FUTURE_ACTIVITY'});
+});

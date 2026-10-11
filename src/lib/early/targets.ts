@@ -5,6 +5,23 @@ export type SupportTarget = { targetId: string; label: string; url: string };
 
 export function parseTargetLink(route: RouteId, input: string): SupportTarget | { handle: string } {
   const value = input.trim();
+  if (route === "youtube_like") {
+    let id = value;
+    if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
+      let url: URL;
+      try { url = new URL(value); } catch { throw new EarlyError("INVALID_TARGET", "Paste a YouTube video link from Share → Copy link."); }
+      ensure(url.protocol === "https:" && !url.username && !url.password && !url.port,
+        "INVALID_TARGET", "Use an HTTPS YouTube video link.");
+      if (url.hostname === "youtu.be") id = url.pathname.match(/^\/([A-Za-z0-9_-]{11})\/?$/)?.[1] ?? "";
+      else {
+        ensure(["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname), "INVALID_TARGET", "Use a youtube.com or youtu.be video link.");
+        id = url.pathname === "/watch" && url.searchParams.getAll("v").length === 1 ? url.searchParams.get("v") ?? ""
+          : url.pathname.match(/^\/(?:shorts|embed)\/([A-Za-z0-9_-]{11})\/?$/)?.[1] ?? "";
+      }
+    }
+    ensure(/^[A-Za-z0-9_-]{11}$/.test(id), "INVALID_TARGET", "Choose one YouTube video, rather than a channel or playlist.");
+    return { targetId: id, label: "YouTube video", url: `https://www.youtube.com/watch?v=${id}` };
+  }
   if (route === "spotify_saved_track") {
     let uri = value;
     if (!value.startsWith("spotify:")) {

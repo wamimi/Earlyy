@@ -1,10 +1,11 @@
 /** Normalize only fields returned by successful strict Reclaim verification. */
 export type EarlyActivity = {
   platform: "spotify" | "youtube";
-  activity: "track_saved" | "channel_subscribed";
+  activity: "track_saved" | "channel_subscribed" | "video_liked";
   sourceSubject: string;
   targetId: string;
   artistIds: string[];
+  channelId?: string;
   occurredAtMicros: string;
   precisionMicros: 1 | 1000000;
   eventId: string;
@@ -42,6 +43,17 @@ export function youtubeSubscriptionEvidence(fields: Record<string, unknown>): Ea
   return { platform: "youtube", activity: "channel_subscribed", sourceSubject,
     targetId, artistIds: [], occurredAtMicros, precisionMicros: 1,
     eventId: JSON.stringify(["youtube", sourceSubject, "channel_subscribed", targetId, occurredAtMicros]) };
+}
+
+/** All four fields must come from the reviewed, same-event signed extraction. */
+export function youtubeLikeEvidence(fields: Record<string, unknown>): EarlyActivity {
+  const sourceSubject = text(fields.source_account_id, /^\d+$/, "source account");
+  const targetId = text(fields.video_id, /^[A-Za-z0-9_-]{11}$/, "video");
+  const channelId = text(fields.channel_id, /^UC[A-Za-z0-9_-]{22}$/, "video channel");
+  const occurredAtMicros = text(fields.activity_timestamp, /^\d{16}$/, "like date");
+  return { platform: "youtube", activity: "video_liked", sourceSubject,
+    targetId, channelId, artistIds: [], occurredAtMicros, precisionMicros: 1,
+    eventId: JSON.stringify(["youtube", sourceSubject, "video_liked", targetId, occurredAtMicros]) };
 }
 
 export type EarlyActivityRule = {

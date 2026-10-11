@@ -48,7 +48,7 @@ function AuthenticatedExample() {
     </select></label>
     {campaign && <>
       <label>Activity to verify<select disabled={busy || Boolean(session)} value={routeIndex} onChange={e => {setRouteIndex(Number(e.target.value));setConsent(false);}}>
-        {campaign.definition.alternatives.map((r,i) => <option key={i} value={i}>{r.route === "spotify_saved_track" ? "Spotify saved track" : "YouTube subscription"} · {r.targetId}</option>)}
+        {campaign.definition.alternatives.map((r,i) => <option key={i} value={i}>{r.route === "spotify_saved_track" ? "Spotify saved track" : r.route === "youtube_like" ? "YouTube video like" : "YouTube subscription"} · {r.targetId}</option>)}
       </select></label>
       <p>Before {campaign.definition.alternatives[routeIndex].cutoff}. Alternatives use OR; this campaign requires {campaign.definition.minimumDistinctEvents} distinct event(s) across {campaign.definition.minimumDistinctDays} UTC day(s).</p>
       <label className="dr-consent"><input type="checkbox" disabled={busy} checked={consent} onChange={e => setConsent(e.target.checked)} />I agree to checking my stored support and, if I start verification, sharing the selected activity, its date and source-account identifier with Early.</label>

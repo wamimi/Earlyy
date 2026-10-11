@@ -15,11 +15,18 @@ export const providers = {
     prefix: "RECLAIM_YOUTUBE_SUBSCRIPTION", coverage: "loaded_english_activity_page",
     deviceAccepted: false, ownershipAccepted: false,
   },
+  youtube_like: {
+    id: "4b2083cb-dabe-4da1-aea2-b0eeed9166b4", version: "1.0.3",
+    hash: "0xd86ffc5d265902b74b24fb790ad49ca72a1622dd0c1c3bd67ddbe972152a1a92",
+    prefix: "RECLAIM_YOUTUBE_LIKE", coverage: "loaded_english_activity_page",
+    deviceAccepted: false, ownershipAccepted: false,
+  },
 } as const;
 
 export function providerFor(route: RouteId) {
   const p = providers[route];
   ensure(p, "UNSUPPORTED_ROUTE", "Unsupported activity route.");
+  ensure(p.id, "PROVIDER_CONFIGURATION_MISMATCH", "This activity provider is not configured yet.", 503);
   ensure(process.env[`${p.prefix}_PROVIDER_ID`] === p.id && process.env[`${p.prefix}_PROVIDER_VERSION`] === p.version,
     "PROVIDER_CONFIGURATION_MISMATCH", "Provider configuration must match the reviewed version allowlist.", 503);
   return p;
@@ -34,7 +41,7 @@ export function capabilities() {
   return [
     ...Object.entries(providers).map(([route, p]) => ({ route, state: "experimental_proof", rewardReady: p.deviceAccepted && p.ownershipAccepted,
       coverage: p.coverage, selection: "campaign_or_public_link", reason: "Device and account-ownership acceptance pending." })),
-    ...["spotify_artist_library", "spotify_album_save", "spotify_presave", "spotify_listening", "youtube_like", "youtube_comment", "youtube_watch"].map(route => ({
+    ...["spotify_artist_library", "spotify_album_save", "spotify_presave", "spotify_listening", "youtube_comment", "youtube_watch"].map(route => ({
       route, state: "unsupported", rewardReady: false, coverage: "not_accepted", selection: "unavailable",
       reason: "This route has not completed reusable proof and ownership validation.",
     })),

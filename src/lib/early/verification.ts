@@ -4,7 +4,7 @@ import { getAddress } from "ethers";
 import { proofFailure } from "./proof-failure";
 import { spotifyRecipeDiagnostics } from "./recipe-diagnostics";
 import { spotifyVerificationHashes } from "./spotify-recipe";
-import { spotifySavedTrackEvidence, youtubeSubscriptionEvidence } from "../activity-evidence";
+import { spotifySavedTrackEvidence, youtubeSubscriptionEvidence, youtubeLikeEvidence } from "../activity-evidence";
 import { encryptRawProof } from "../proof-encryption";
 import { applicationUrl } from "../origins";
 import { EarlyError, ensure, requireSetting } from "./errors";
@@ -31,6 +31,7 @@ export async function startSession(userId: string, wallet: string, selection: Ru
     recipeHash: p.hash, selection, expiresAt: expires_at });
   request.setContext(getAddress(wallet), context_message);
   request.setParams(selection.route === "youtube_subscription" ? { channel_id: selection.targetId, cutoff: selection.cutoff }
+    : selection.route === "youtube_like" ? { video_id: selection.targetId, cutoff: selection.cutoff }
     : { [selection.targetId.startsWith("spotify:track:") ? "track_id" : "artist_id"]: selection.targetId.split(":")[2], cutoff: selection.cutoff });
   request.setAppCallbackUrl(`${applicationUrl()}/api/early/callback?session=${encodeURIComponent(id)}&token=${callbackToken}`, true);
   const returnPath = campaignId ? `/dashboard/campaigns/${encodeURIComponent(campaignId)}` : "/rewards";
@@ -79,7 +80,8 @@ export async function verifySession(proofs: Proof[], session: Session): Promise<
   }
   ensure(result.data.length === 1, "PROOF_COUNT_MISMATCH", "Unexpected number of verified records.");
   const fields = result.data[0].extractedParameters;
-  const activity = session.route === "spotify_saved_track" ? spotifySavedTrackEvidence(fields) : youtubeSubscriptionEvidence(fields);
+  const activity = session.route === "spotify_saved_track" ? spotifySavedTrackEvidence(fields)
+    : session.route === "youtube_like" ? youtubeLikeEvidence(fields) : youtubeSubscriptionEvidence(fields);
   ensure(activity.targetId === session.selection.targetId || activity.artistIds.includes(session.selection.targetId), "WRONG_TARGET", "Proof does not match the selected target.");
   const provedAt = new Date(proofs[0].claimData.timestampS * 1000).toISOString();
   ensure(BigInt(activity.occurredAtMicros) <= BigInt(proofs[0].claimData.timestampS) * BigInt(1000000), "FUTURE_ACTIVITY", "Activity cannot occur after its proof.");
