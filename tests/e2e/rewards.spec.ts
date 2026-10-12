@@ -13,11 +13,13 @@ test("rewards entry explains testnet and eligibility requirements without claimi
   expect(errors).toEqual([]);
   await page.screenshot({path:`test-results/rewards-${test.info().project.name}.png`,fullPage:true});
 });
-test("unavailable account services keep sign-in disabled and reward controls inaccessible",async({page})=>{
+test("missing or unavailable account services keep sign-in disabled and reward controls inaccessible",async({page})=>{
   await page.route("https://auth.privy.io/**",route=>route.abort());
   await page.goto("/rewards");
   await expect(page.getByRole("button",{name:"Sign in to continue"})).toBeDisabled();
-  await expect(page.getByText(/Connecting to account services/)).toBeVisible();
+  // CI has no Privy app ID; a configured app with blocked requests stays connecting.
+  // Both states must explain why sign-in is disabled and keep claim controls hidden.
+  await expect(page.getByText(/Connecting to account services|Account sign-in is not configured for this environment/)).toBeVisible();
   await expect(page.getByRole("heading",{name:"Claim your reward"})).toHaveCount(0);
 });
 test("new mutation API rejects untrusted origins and unauthenticated wallets",async({request})=>{
