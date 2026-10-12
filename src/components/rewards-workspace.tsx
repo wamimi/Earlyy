@@ -85,6 +85,8 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   const [txHash, setTxHash] = useState("");
   const [indexed, setIndexed] = useState<Indexed | null>(null);
   const [balance, setBalance] = useState("");
+  // Paying gas is an explicit choice, never a fallback after a failed sponsored send.
+  const [payClaimGas, setPayClaimGas] = useState(false);
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const rule = rules.find(r => r.id === ruleId);
@@ -186,7 +188,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
     if (!active.current || getAddress(await signer.getAddress()) !== getAddress(auth.walletAddress)) throw new Error("Wallet changed. Reopen the reward and try again.");
     if (prepared.authorizationExpiry && BigInt(prepared.authorizationExpiry) <= BigInt(Math.floor(Date.now()/1000))) throw new Error("Authorization expired. Click claim again to refresh it.");
     const tx = { to: prepared.transaction.to, data: prepared.transaction.data, value: BigInt(prepared.transaction.value) };
-    if (kind === "claim" && auth.canSponsorClaims) {
+    if (kind === "claim" && auth.canSponsorClaims && !payClaimGas) {
       setStatus("Approve your reward claim. Requesting sponsored gas through Privy…");
       let hash: string;
       try {
@@ -216,6 +218,12 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   return <>
     <div className={styles.switcher} role="group" aria-label="Reward workspace sections"><button aria-pressed={panel === "rewards"} onClick={() => setPanel("rewards")}>Campaign rewards</button><button aria-pressed={panel === "verify"} onClick={() => setPanel("verify")}>Verify support</button>{access?.team && <button aria-pressed={panel === "manage"} onClick={() => setPanel("manage")}>Manage campaigns</button>}</div>
     <details className={styles.accountDetails}><summary>Account wallet{balance && ` · ${balance} test MON`}</summary><p className={styles.wallet}>{auth.walletAddress}</p></details>
+    <details className={styles.explainer}><summary>Need test MON?</summary>
+      <p>Verifying support does not require gas. To pay transaction fees or fund a campaign, get test MON for the account wallet shown below.</p>
+      <p className={styles.wallet}>{auth.walletAddress}</p>
+      <ol><li>Copy this wallet address.</li><li>Open the <a href="https://faucet.monad.xyz" target="_blank" rel="noreferrer">Monad testnet faucet</a>, paste the address and follow its claim steps.</li><li>Return to Early after the funds arrive. For a reward claim from an Early wallet, select “Pay claim gas with my test MON” below.</li></ol>
+      <p>Use Monad Testnet (chain 10143). Mainnet MON cannot pay testnet fees. Faucet availability and eligibility limits apply. Test MON has no monetary value.</p>
+    </details>
     <div className={styles.status} role="status" aria-live="polite">{status}</div>
     {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
       {session && <div className={styles.handoff} ref={verificationPanel} tabIndex={-1} aria-label="Complete verification">
@@ -253,6 +261,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
       <h2>Claim your reward</h2><p className={styles.meta}>Enter the reward ID shared by the campaign organizer to check availability and claim.</p>
       <details className={styles.explainer}><summary>How claims and fees work</summary><p>Funding and payouts are public on Monad testnet. Early’s eligibility signer authorizes claims; the contract does not independently verify your platform activity.</p>
       <p className={styles.meta}>{auth.canSponsorClaims ? "Claims from your Early wallet request sponsored gas through Privy. You do not need MON for claim fees when sponsorship is available." : "Claims from an external wallet require test MON for gas."} Campaign funding and refunds use the funding wallet’s gas.</p></details>
+      {auth.canSponsorClaims && <label className={styles.consent}><input type="checkbox" checked={payClaimGas} disabled={busy} onChange={e => setPayClaimGas(e.target.checked)} /><span><strong>Pay claim gas with my test MON</strong><br />Choose this for the faucet-funded demo or when sponsorship is unavailable. Your account wallet must hold test MON. You will review and approve the transaction in your wallet.</span></label>}
       <div className={styles.row}><label className={styles.field}>Benefit ID<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label>
         <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => refreshIndexed())}>Refresh activity</button>
         <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"))}>Check eligibility & claim</button></div>
