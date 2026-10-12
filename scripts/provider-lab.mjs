@@ -3,6 +3,7 @@
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { youtubeSubscriptionRecipe } from './provider-recipes.mjs';
+import { proofGeoLocation } from './provider-client-config.mjs';
 
 const root = process.env.RECLAIM_AGENT_ROOT;
 if (!root) throw new Error('Set RECLAIM_AGENT_ROOT to the installed Reclaim agent directory.');
@@ -19,6 +20,7 @@ const save = (name, value) => writeFile(`${output}/${name}.json`, JSON.stringify
 const browser = await connectCdp(9222);
 let capture;
 let tab;
+let proofVerified = false;
 try {
   const tabs = await browser.listTabs();
   const target = tabs.find(t => t.tabId === process.env.EARLY_CAPTURE_TAB) ?? tabs.find(t => t.url.startsWith('https://myactivity.google.com/'));
@@ -62,6 +64,12 @@ try {
     if (selected[5].length !== 115) throw new Error('Unexpected event token framing.');
     provider = { ...provider, ...youtubeSubscriptionRecipe({ timestamp: String(selected[4]), channelId: selected[9][3].split('/').at(-1) }) };
   }
+  const proofGeo = process.env.EARLY_PROOF_GEO ?? proofGeoLocation;
+  if (proofGeo !== 'direct' && !/^[A-Z]{2}$/.test(proofGeo)) throw new Error('Invalid diagnostic proof country.');
+  if (proofGeo !== 'direct') provider.geoLocation = proofGeo;
+  const protocol = process.env.EARLY_PROOF_TLS;
+  if (protocol && !['TLS1_2', 'TLS1_3'].includes(protocol)) throw new Error('Invalid diagnostic TLS version.');
+  if (protocol) provider.additionalClientOptions = { supportedProtocolVersions: [protocol] };
   // Selector-only mode is diagnostic and must never be used for eligibility.
   const { secrets } = splitSecrets(stripTransportHeaders(request.requestHeaders));
   if (boundEvent) {
@@ -85,6 +93,7 @@ try {
   await save('youtube-selector-repair-provider', provider);
   console.log(JSON.stringify({ stage: 'captured', status: request.status, anonymousStatus: anonymous.status, anonRejected, eventCount: rows.length }));
   const result = await runAttestorProof(provider, secrets, { includeAttestorClaim: true, zkEngine: process.env.EARLY_ZK_ENGINE ?? 'stwo' });
+  proofVerified = result.verified === true;
   // SDK errors can embed an entire response; retain those locally, never print.
   await save('youtube-selector-repair-result', result);
   console.log(JSON.stringify({ stage: 'proof', verified: result.verified, identifier: result.identifier,
@@ -94,4 +103,4 @@ try {
   await tab?.close();
   await browser.close();
 }
-process.exit(0);
+process.exit(proofVerified ? 0 : 1);

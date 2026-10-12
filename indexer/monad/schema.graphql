@@ -1,0 +1,39 @@
+type Benefit {
+  id: ID!
+  creator: String!
+  payout: BigInt!
+  capacity: BigInt!
+  expiry: BigInt!
+  ruleHash: String!
+  ruleVersion: BigInt!
+  funded: BigInt!
+  paid: BigInt!
+  refunded: BigInt!
+  remaining: BigInt!
+  claims: BigInt!
+  closed: Boolean!
+  lastBlock: Int!
+}
+type Creator {
+  id: ID!
+  funded: BigInt!
+  paid: BigInt!
+  refunded: BigInt!
+  benefits: BigInt!
+  claims: BigInt!
+}
+type Claim {
+  id: ID!
+  benefit: String!
+  beneficiary: String!
+  amount: BigInt!
+  transactionHash: String!
+  block: Int!
+}
+type IndexedEvent {
+  id: ID!
+  benefit: String!
+  transactionHash: String!
+  block: Int!
+  blockHash: String!
+}

@@ -13,11 +13,11 @@ test('public pages share the brand and do not advertise an unshipped integration
     if (testInfo.project.name === 'desktop' && ['/campaigns', '/developers'].includes(route)) await page.screenshot({ path: `/tmp/early${route.replace('/', '-')}.png` });
   }
 });
-test('landing explains recognition and launch status', async ({ page }) => {
+test('landing explains recognition and open testing', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Turn early support into rewards.' })).toBeVisible();
   await page.getByText('Can I use Early today?', { exact: true }).click();
-  await expect(page.getByText('Join the waitlist to hear when we launch', { exact: false })).toBeVisible();
+  await expect(page.getByText('Testing is open to everyone.', { exact: false })).toBeVisible();
   await expect(page.locator('#how article')).toHaveCount(3);
 });
 test('campaigns present reward opportunities without deploying live campaigns', async ({ page }) => {

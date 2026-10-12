@@ -49,3 +49,8 @@ skills-lock.json
 
 # TypeScript
 *.tsbuildinfo
+
+# Local Monad/indexer artifacts
+contracts/monad/broadcast/
+indexer/monad/.envio/
+indexer/monad/config.local.yaml

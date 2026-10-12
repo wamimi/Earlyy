@@ -1,0 +1,27 @@
+# Monad testnet deployment recorded in contracts/monad/deployments/10143.json.
+# Envio Cloud supplies HyperSync access; no custom environment variables required.
+# Never upload the application .env.local or put private tokens in this file.
+name: early-monad
+description: Native test MON benefit funding, payouts and refunds
+rollback_on_reorg: true
+contracts:
+  - name: EarlyBenefitEscrow
+    handler: src/handlers.ts
+    abi_file_path: abis/EarlyBenefitEscrow.json
+    events:
+      - event: BenefitCreated
+      - event: BenefitFunded
+      - event: BenefitClaimed
+      - event: BenefitClosed
+chains:
+  - id: 10143
+    hypersync_config:
+      url: https://10143.hypersync.xyz
+    rpc:
+      - url: https://testnet-rpc.monad.xyz
+        for: fallback
+    start_block: 70207421
+    contracts:
+      - name: EarlyBenefitEscrow
+        # Verified deployment; keep aligned with contracts/monad/deployments/10143.json.
+        address: ["0x32192Beb858561c67CCe7C1b2dbdD60E8484Df41"]

@@ -18,9 +18,9 @@ test('developer flow, use cases, documentation and privacy work', async ({page, 
   await expect(page.locator('#usecase-0')).not.toBeVisible();
   await expect(page.locator('#usecase-1')).toBeVisible();
   await loyalty.click();
-  await expect(page.getByRole('heading', {name:'Developer docs. Coming soon.'})).toBeAttached();
+  await expect(page.getByRole('heading', {name:'Developer docs. Start here.'})).toBeAttached();
   await expect(page.locator('.dv-doc-resources a')).toHaveCount(4);
-  for(const link of await page.locator('.dv-doc-resources a').all()) expect(await link.getAttribute('href')).toBe('/waitlist?interest=developer');
+  for(const link of await page.locator('.dv-doc-resources a').all()) expect(await link.getAttribute('href')).toMatch(/^\/developers\/docs#(contract|outcomes|quickstart)$/);
   await expect(page.locator('#privacy')).toContainText('Reclaim’s zkTLS');
   await page.goto('/developers');
   await page.evaluate(async () => {const images=Array.from(document.images);images.forEach(image=>{image.loading='eager'});await Promise.all(images.map(image=>image.decode().catch(()=>{})));});
@@ -35,8 +35,8 @@ test('developer flow, use cases, documentation and privacy work', async ({page, 
 });
 
 
-test('developer documentation has an honest coming soon page', async ({page}) => {
+test('developer documentation explains the authenticated integration', async ({page}) => {
   await page.goto('/developers/docs');
-  await expect(page.getByRole('heading', {name:'Documentation is coming soon.'})).toBeVisible();
-  await expect(page.getByRole('link', {name:'Join the developer waitlist'})).toHaveAttribute('href','/waitlist?interest=developer');
+  await expect(page.getByRole('heading', {name:'Build with verified support.'})).toBeVisible();
+  await expect(page.getByText('Authenticated preview integration.', {exact:false})).toBeVisible();
 });

@@ -9,7 +9,13 @@ test('public pages serve framing protections and hydrate under the CSP', async (
     const csp = response?.headers()['content-security-policy'];
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain('https://auth.privy.io');
-    await expect(page.locator('.site-header')).toBeVisible();
+    if (path === '/waitlist') {
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await expect(page.getByRole('navigation', { name: 'Fan navigation' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Find your first campaign.' })).toBeVisible();
+    } else {
+      await expect(page.locator('.site-header')).toBeVisible();
+    }
   }
   expect(violations).toEqual([]);
 });

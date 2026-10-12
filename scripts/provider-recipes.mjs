@@ -1,18 +1,21 @@
 /** Candidate recipes. Publication requires real signed and Verifier tests. */
 export function spotifyTrackRecipe({ collectionUri, offset }) {
   if (!/^spotify:playlist:[A-Za-z0-9]{22}$/.test(collectionUri) || !Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid Spotify selection.');
+  const savedItemPattern = '\\{"addedAt":\\{"isoString":"[^"\\\\]+"\\}[\\s\\S]*?"uid":"[^"\\\\]+"\\}';
   return {
     name: 'Early Spotify saved track',
     url: 'https://api-partner.spotify.com/pathfinder/v2/query', method: 'POST',
     body: '{"variables":{"uri":"{{collection_uri}}","offset":{{offset}},"limit":1,"enableWatchFeedEntrypoint":true,"includeEpisodeContentRatingsV2":true},"operationName":"fetchPlaylist","extensions":{"persistedQuery":{"version":1,"sha256Hash":"8964e8eafb21aa992a7d951d256d83285c04be2105d209262901de70cb97584a"}}}',
     responseMatches: [
-      { type: 'regex', value: '(?<saved_item>\\{"addedAt":\\{"isoString":"[^"\\\\]+"\\}[\\s\\S]*?"uid":"[^"\\\\]+"\\})' },
+      { type: 'regex', value: `(?<saved_item>${savedItemPattern})` },
       { type: 'regex', value: '"ownerV2":\\{"data":\\{[\\s\\S]*?"uri":"(?<collection_owner>spotify:user:[A-Za-z0-9]+)"' },
       { type: 'contains', value: '"format":"liked-songs"' },
       { type: 'contains', value: '"canEditItems":true' },
     ],
     responseRedactions: [
-      { jsonPath: '$.data.playlistV2.content.items[0]' },
+      // Native array-object ranges omit the opening brace; select the parent
+      // and reveal only the same saved item with the extraction pattern.
+      { jsonPath: '$.data.playlistV2.content', regex: savedItemPattern },
       { jsonPath: '$.data.playlistV2.ownerV2' },
       { jsonPath: '$.data.playlistV2.format', regex: '"format":"liked-songs"' },
       { jsonPath: '$.data.playlistV2.currentUserCapabilities.canEditItems', regex: '"canEditItems":true' },
@@ -29,6 +32,14 @@ export function spotifyTrackUserScript() {
     const originalFetch = window.fetch;
     let busy = false;
     let complete = false;
+    const navigationTimer = setInterval(() => {
+      if (complete) { clearInterval(navigationTimer); return; }
+      if (!window.Reclaim || !document.querySelector('[data-testid="user-widget-link"]')) return;
+      if (location.pathname !== '/collection/tracks') {
+        clearInterval(navigationTimer);
+        location.assign('https://open.spotify.com/collection/tracks');
+      }
+    }, 500);
     async function inspect(input, init, response) {
       if (busy || complete || !window.Reclaim || response.status !== 200) return;
       const requestUrl = typeof input === 'string' ? input : input.url;
@@ -65,12 +76,32 @@ export function spotifyTrackUserScript() {
             if (!/^spotify:playlist:[A-Za-z0-9]{22}$/.test(collection)) throw new Error('Unsupported collection.');
             const selectedOffset = offset + index;
             const actualBody = recipe.body.replace('{{collection_uri}}', collection).replace('{{offset}}', String(selectedOffset));
+            const selectedResponse = await originalFetch.call(window, recipe.url, {
+              method: recipe.method, headers, body: actualBody, credentials: 'include',
+            });
+            if (!selectedResponse.ok) throw new Error('Spotify could not reload the selected save. Please start a new verification.');
+            const selectedText = await selectedResponse.text();
+            const selectedData = JSON.parse(selectedText).data?.playlistV2;
+            const selectedItems = selectedData?.content?.items;
+            const selectedItem = selectedItems?.[0];
+            const selectedTrack = selectedItem?.itemV2?.data;
+            const shapeMatches = recipe.responseMatches.every(match => match.type === 'regex'
+              ? new RegExp(match.value).test(selectedText) : selectedText.includes(match.value));
+            window.Reclaim.log?.('info', { event: 'EARLY_SPOTIFY_SELECTED_RESPONSE',
+              status: selectedResponse.status, itemCount: selectedItems?.length ?? 0,
+              recipeMatches: shapeMatches });
+            if (selectedItems?.length !== 1 || selectedTrack?.uri !== items[index].itemV2.data.uri
+              || selectedItem.addedAt?.isoString !== items[index].addedAt?.isoString
+              || selectedItem.uid !== items[index].uid
+              || !shapeMatches) {
+              throw new Error('Spotify returned a changed or unsupported saved-song response. No proof was submitted. Please start a new verification.');
+            }
             const claimId = await window.Reclaim.requestClaim({ url: recipe.url, method: recipe.method,
               responseMatches: recipe.responseMatches, responseRedactions: recipe.responseRedactions,
               bodySniff: { enabled: true, template: recipe.body }, requestBody: actualBody,
               headers: Object.fromEntries(headers), credentials: 'include',
               witnessParameters: { collection_uri: collection, offset: String(selectedOffset) } });
-            if (!claimId) throw new Error('The proof request could not be started.');
+            if (!claimId) window.Reclaim.log?.('info', 'Claim submitted without an identifier; waiting for the Verifier result.');
             complete = true;
             window.Reclaim.canExpectManyClaims(false);
             return;
@@ -156,7 +187,7 @@ export function youtubeSubscriptionUserScript() {
         if (typeof row[5] !== 'string' || row[5].length !== 115) throw new Error('YouTube changed its activity format. Please try another evidence route.');
         const claimId = await window.Reclaim.requestClaim({ ...recipe, credentials: 'include',
           witnessParameters: { selected_timestamp: String(row[4]), selected_channel_id: row[9][3].split('/').at(-1) } });
-        if (!claimId) throw new Error('The proof request could not be started.');
+        if (!claimId) bridge.log?.('info', 'Claim submitted without an identifier; waiting for the Verifier result.');
         bridge.canExpectManyClaims(false);
       } catch (error) {
         bridge.canExpectManyClaims(false);

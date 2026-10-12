@@ -1,5 +1,14 @@
 # Early credential setup
 
+## Latest update: public settings are already installed
+
+Monad RPC, browser-safe public RPC, chain ID 10143, MonadVision testnet explorer, deployer account name and the four route-specific provider settings are now populated in the actual `.env.local`. The public RPC was checked live and returned chain ID 10143. Skip earlier instructions to obtain/copy these public values. No secrets were overwritten.
+
+Foundry is installed but needs updating from 1.2.3 to the current Monad-supported release (official guide requires >=1.8.0): run `foundryup`, then `forge --version`. Create the deployment keystore with `mkdir -p "$HOME/.foundry/keystores"` followed by `cast wallet new "$HOME/.foundry/keystores" early-monad-deployer`; enter its encryption password interactively. Read its public address with `cast wallet address --account early-monad-deployer`. Request test MON at https://faucet.monad.xyz using that address. No raw deployer private key needs adding to env.
+
+The official deployment guide is https://docs.monad.xyz/guides/deploy-smart-contract/foundry. Envio token, when using local HyperSync, goes directly into the existing blank `ENVIO_API_TOKEN` entry in `.env.local`. The GraphQL endpoint and escrow address remain future outputs; no public value can substitute for them.
+
+
 Fill `/Users/xiaomao/Earlyy/.env.setup.local`. It is a private, Git-ignored worksheet, not a Next.js auto-loaded filename. Existing active values remain in `.env.local`; they have not been copied, printed or overwritten. The implementation assistant must merge only completed missing entries into `.env.local`, preserve existing values, and load the indexer/Foundry environment explicitly. Never shell-source untrusted environment text or print secrets during validation.
 
 The worksheet includes proposed names for new implementation. Those names do not imply features already exist. The assistant should adopt these names consistently and validate configuration per subsystem, so missing deployment outputs do not prevent unit tests.

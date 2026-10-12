@@ -40,7 +40,7 @@ export function CampaignsExperience() {
     setSelected(opportunity);
     details.current?.showModal();
   }
-  const createAction = <a className="cp-button cp-button-coral cp-header-create" href="/waitlist?interest=creator">Join as a creator <ArrowRight size={16} /></a>;
+  const createAction = <a className="cp-button cp-button-coral cp-header-create" href="/rewards">Campaign workspace <ArrowRight size={16} /></a>;
   return (
     <main className="product-main campaigns-page" id="top">
       <section className="cp-hero">
@@ -49,12 +49,12 @@ export function CampaignsExperience() {
         <div className="cp-container cp-hero-content">
           <h1>Your support<br />opens doors.</h1>
           <p>Discover what your early support could unlock.</p>
-          <div className="cp-actions"><a className="cp-button cp-button-coral" href="#opportunities">Explore campaigns <ArrowRight size={18} /></a><a className="cp-button cp-button-outline" href="/waitlist?interest=creator">Campaign creation coming soon <ArrowRight size={18} /></a></div>
+          <div className="cp-actions"><a className="cp-button cp-button-coral" href="#opportunities">Explore campaigns <ArrowRight size={18} /></a><a className="cp-button cp-button-outline" href="/brands#planner">Plan a campaign <ArrowRight size={18} /></a></div>
         </div>
       </section>
 
       <section className="cp-container cp-opportunities" id="opportunities" aria-labelledby="opportunities-heading">
-        <div className="cp-section-top"><div><h2 id="opportunities-heading">Find your next opportunity.</h2><p>Campaigns are coming soon. Discover the rewards creators and brands can offer.</p></div><div className="cp-filters" role="group" aria-label="Campaign categories">{Object.keys(catalogue).map(item => <button key={item} aria-pressed={item === category} onClick={() => setCategory(item)}>{item}</button>)}</div></div>
+        <div className="cp-section-top"><div><h2 id="opportunities-heading">Find your next opportunity.</h2><p>Explore campaign ideas below. Visit your dashboard for available campaigns and provider testing.</p></div><div className="cp-filters" role="group" aria-label="Campaign categories">{Object.keys(catalogue).map(item => <button key={item} aria-pressed={item === category} onClick={() => setCategory(item)}>{item}</button>)}</div></div>
         <div className="cp-catalogue" key={category}>{opportunities.map((item, index) => <button className={`cp-opportunity cp-opportunity-${index + 1}`} key={item.title} onClick={() => openDetails(item)} aria-label={`Explore ${item.title}`}><div className="cp-card-image"><Image src={`/campaigns/${item.image}.png`} alt={item.image === "concert" ? "Fans sharing a live concert moment" : item.image === "merch" ? "Limited merchandise beside a record collection" : "Browsing vinyl at an independent record shop"} fill sizes={index === 0 ? "(max-width: 700px) 100vw, 40vw" : "(max-width: 700px) 100vw, 50vw"} /></div><div className="cp-card-copy"><div><h3>{item.title}</h3><p>{item.copy}</p></div><span className="cp-round-arrow"><ArrowRight size={22} /></span></div></button>)}</div>
 
         <article className="cp-featured">
@@ -64,10 +64,10 @@ export function CampaignsExperience() {
       </section>
 
       <section className="cp-container cp-how" aria-labelledby="campaign-how"><h2 id="campaign-how">A simple way to get involved.</h2><ol className="cp-steps">{steps.map(({ icon: Icon, title, copy }, index) => <li key={title}><div className="cp-step-icon"><Icon size={28} /><span>0{index + 1}</span></div><h3>{title}</h3><p>{copy}</p>{index < 3 && <ArrowRight className="cp-step-arrow" size={22} aria-hidden="true" />}</li>)}</ol></section>
-      <section className="cp-container cp-final"><div><h2>Support what moves you.</h2><p>Find your people. Discover what comes next.</p></div><a className="cp-button cp-button-coral" href="/waitlist">Join the waitlist <ArrowRight size={18} /></a></section>
+      <section className="cp-container cp-final"><div><h2>Support what moves you.</h2><p>Find your people. Discover what comes next.</p></div><a className="cp-button cp-button-coral" href="/dashboard">Open Early <ArrowRight size={18} /></a></section>
       <LandingFooter compact />
 
-      <dialog className="cp-dialog" ref={details} onClick={event => { if (event.target === event.currentTarget) details.current?.close(); }} aria-labelledby="opportunity-title"><div className="cp-dialog-content"><button className="cp-dialog-close" aria-label="Close opportunity" onClick={() => details.current?.close()}><X /></button><span className="cp-eyebrow">{category} opportunity</span><h2 id="opportunity-title">{selected?.title}</h2><p>{selected?.copy}</p><dl><dt>Qualifying support</dt><dd>{selected?.criteria}</dd><dt>Potential rewards</dt><dd>{selected?.reward}</dd></dl><div className="cp-dialog-note"><ShieldCheck size={21} /><p>Artists, brands, and communities set their campaign’s criteria, rewards, and availability. Public campaigns haven’t launched yet.</p></div><button className="cp-button cp-button-green" onClick={() => details.current?.close()}>Keep exploring <ArrowRight size={18} /></button></div></dialog>
+      <dialog className="cp-dialog" ref={details} onClick={event => { if (event.target === event.currentTarget) details.current?.close(); }} aria-labelledby="opportunity-title"><div className="cp-dialog-content"><button className="cp-dialog-close" aria-label="Close opportunity" onClick={() => details.current?.close()}><X /></button><span className="cp-eyebrow">{category} opportunity</span><h2 id="opportunity-title">{selected?.title}</h2><p>{selected?.copy}</p><dl><dt>Qualifying support</dt><dd>{selected?.criteria}</dd><dt>Potential rewards</dt><dd>{selected?.reward}</dd></dl><div className="cp-dialog-note"><ShieldCheck size={21} /><p>This is a campaign idea. Organizers set the criteria, rewards, and availability for each live campaign. See available campaigns in your dashboard.</p></div><button className="cp-button cp-button-green" onClick={() => details.current?.close()}>Keep exploring <ArrowRight size={18} /></button></div></dialog>
 
     </main>
   );

@@ -13,6 +13,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "indexer/**/.envio/**",
+      "indexer/**/envio-env.d.ts",
       "contracts/**",
       "contracts/**/artifacts/**",
       "contracts/**/cache/**",
