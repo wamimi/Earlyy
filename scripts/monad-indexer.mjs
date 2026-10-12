@@ -27,7 +27,11 @@ const config = renderIndexerConfig(readFileSync(resolve(dir,'config.yaml'),'utf8
 console.log(useHyperSync ? 'Indexer source: Monad HyperSync with RPC fallback.' : 'Indexer source: Monad RPC sync.');
 writeFileSync(resolve(dir,'config.local.yaml'),config,{mode:0o600});
 // Child inherits only the indexer's required application configuration.
+// Envio does not discover Docker CLI contexts such as Colima automatically.
+const dockerContext = process.env.DOCKER_HOST ? null : spawnSync('docker', ['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}'], { encoding: 'utf8' });
+const dockerHost = process.env.DOCKER_HOST || (dockerContext?.status === 0 ? dockerContext.stdout.trim() : '');
 const childEnv = { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR,
+  ...(dockerHost ? {DOCKER_HOST:dockerHost}: {}),
   ENVIO_MONAD_RPC_URL: env.MONAD_RPC_URL, ...(env.ENVIO_API_TOKEN ? {ENVIO_API_TOKEN:env.ENVIO_API_TOKEN}: {}) };
 const result = spawnSync('pnpm',['exec','envio','--config','config.local.yaml',process.argv[2] ?? 'dev'],{cwd:dir,env:childEnv,stdio:'inherit'});
 process.exit(result.status ?? 1);

@@ -24,3 +24,34 @@ The handler entities are `Benefit`, `Creator`, `Claim` and `IndexedEvent`. Benef
 The frontend distinguishes submitted/confirming/confirmed and indexing pending/unavailable/indexed. Its GraphQL reconciliation compares the indexed block hash to the canonical RPC receipt. Contract state, not indexed aggregates, determines available funds and claim authorization. A stale indexer cannot authorize spending.
 
 The real-handler test uses `createTestIndexer()` and explicit simulated events. It exercises Envio's runtime and generated handler interfaces without network transactions or a hosted database. Hosting and deployment remain separate manual actions.
+
+## Hosted testnet setup
+
+`config.hosted.yaml` targets the verified Monad testnet escrow
+`0x32192Beb858561c67CCe7C1b2dbdD60E8484Df41`, starting at its deployment
+block `70207421`. The deployment receipt is recorded in
+`contracts/monad/deployments/10143.json`. Do not use the inactive default config
+or synthetic test config for the hosted service.
+
+After explicit deployment authorization, configure Envio Cloud with:
+
+- Repository root: `indexer/monad`.
+- Config file: `config.hosted.yaml`.
+- Branch: the branch containing the reviewed indexer changes.
+- `ENVIO_API_TOKEN`: the existing HyperSync token, entered privately.
+- `ENVIO_MONAD_RPC_URL`: `https://testnet-rpc.monad.xyz`, or the approved RPC endpoint.
+
+Never upload the application's `.env.local`. The HyperSync token supplies chain
+data access; it does not create a hosted indexer. Envio's free Development plan
+lasts at most 30 days and has no availability guarantee, so record its expiry
+before using it for a public testnet demo.
+
+Use the GraphQL URL and authentication settings shown by the resulting service
+as the backend's `ENVIO_GRAPHQL_URL`, `ENVIO_GRAPHQL_AUTH_HEADER` and
+`ENVIO_GRAPHQL_AUTH_TOKEN`. These must remain server-only. A localhost URL cannot
+be reached by the deployed backend.
+
+Acceptance requires a real `BenefitCreated`, funding and claim transaction to
+appear in the corresponding entities, and Early to report each transaction as
+indexed after canonical receipt reconciliation. A synchronized empty indexer
+or passing simulated handler tests does not establish that acceptance.
