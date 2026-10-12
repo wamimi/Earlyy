@@ -21,8 +21,8 @@ beforeEach(() => {
   mocks.one.mockResolvedValue({ id: "rule", definition: rule });
   mocks.owned.mockResolvedValue([{ id: "event", user_id: "fan", source_key: "bound-source", evidence }]);
   mocks.published.mockResolvedValue(undefined);
-  mocks.snapshot.mockResolvedValue({ b: { creator: wallet, ruleHash: ruleCommitment(rule), payout: 100n, capacity: 2n,
-    expiry: 2000000000n, ruleVersion: 1n, closed: false, remaining: 200n, claims: 0n },
+  mocks.snapshot.mockResolvedValue({ b: { creator: wallet, ruleHash: ruleCommitment(rule), payout: BigInt(100), capacity: BigInt(2),
+    expiry: BigInt(2000000000), ruleVersion: BigInt(1), closed: false, remaining: BigInt(200), claims: BigInt(0) },
     address, contract: { consumed, claimedWallet }, block: { timestamp: Math.floor(Date.now() / 1000) }, signer: signerAddress, epoch: "1" });
   mocks.signer.mockReturnValue({ address: signerAddress, sign });
   mocks.db.mockImplementation(async (path, _method, body) => path === "rpc/early_reserve_authorization" ? body.p_payload : {});
@@ -48,8 +48,8 @@ it("rejects a fan with no qualifying evidence", async () => {
 it.each(["terms", "funding", "expiry", "signer", "publication"])("retains the %s authorization boundary", async kind => {
   const snapshot = await mocks.snapshot();
   const codes = { terms: "BENEFIT_TERMS_MISMATCH", funding: "BENEFIT_UNAVAILABLE", expiry: "BENEFIT_UNAVAILABLE", signer: "SIGNER_MISMATCH", publication: "CAMPAIGN_UNAVAILABLE" };
-  if (kind === "terms") snapshot.b.payout = 101n;
-  if (kind === "funding") snapshot.b.remaining = 0n;
+  if (kind === "terms") snapshot.b.payout = BigInt(101);
+  if (kind === "funding") snapshot.b.remaining = BigInt(0);
   if (kind === "expiry") snapshot.block.timestamp = 2000000000;
   if (kind === "signer") snapshot.signer = wallet;
   if (kind === "publication") mocks.published.mockRejectedValue({ code: codes.publication });
