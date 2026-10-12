@@ -1,5 +1,6 @@
 # Monad testnet deployment recorded in contracts/monad/deployments/10143.json.
-# Use only ENVIO_ settings in Envio Cloud; never upload the application .env.local.
+# Envio Cloud supplies HyperSync access; no custom environment variables required.
+# Never upload the application .env.local or put private tokens in this file.
 name: early-monad
 description: Native test MON benefit funding, payouts and refunds
 rollback_on_reorg: true
@@ -17,7 +18,7 @@ chains:
     hypersync_config:
       url: https://10143.hypersync.xyz
     rpc:
-      - url: ${ENVIO_MONAD_RPC_URL}
+      - url: https://testnet-rpc.monad.xyz
         for: fallback
     start_block: 70207421
     contracts:

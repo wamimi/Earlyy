@@ -38,11 +38,14 @@ After explicit deployment authorization, configure Envio Cloud with:
 - Repository root: `indexer/monad`.
 - Config file: `config.hosted.yaml`.
 - Branch: the branch containing the reviewed indexer changes.
-- `ENVIO_API_TOKEN`: the existing HyperSync token, entered privately.
-- `ENVIO_MONAD_RPC_URL`: `https://testnet-rpc.monad.xyz`, or the approved RPC endpoint.
 
-Never upload the application's `.env.local`. The HyperSync token supplies chain
-data access; it does not create a hosted indexer. Envio's free Development plan
+No custom environment variables are needed for this hosted configuration.
+Envio Cloud supplies HyperSync access without a custom API token; the YAML uses
+the public `https://testnet-rpc.monad.xyz` RPC fallback directly. Custom environment
+variables require a paid plan. Keep the existing HyperSync token for local use,
+and never upload the application's `.env.local` or commit private tokens.
+The HyperSync token supplies chain data access; it does not create a hosted indexer.
+Envio's free Development plan
 lasts at most 30 days and has no availability guarantee, so record its expiry
 before using it for a public testnet demo.
 
