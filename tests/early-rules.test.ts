@@ -76,3 +76,21 @@ describe("eligibility semantics", () => {
     vi.stubEnv("EARLY_SOURCE_NULLIFIER_KEY_VERSION","2");expect(()=>sourceKey("spotify","alice")).toThrow(/migration/);
   });
 });
+
+describe("campaign description", () => {
+  const base = { version: 1, title: "Proof of Rickroll", alternatives: [{ route: "youtube_like", targetId: "dQw4w9WgXcQ", cutoff: "2026-10-27T21:00:00.000Z" }],
+    payoutWei: "10000000000000000", capacity: 100, claimExpiry: 1793134800 };
+  it("keeps commitments of rules without a description unchanged", () => {
+    expect(ruleCommitment(parseRule(base))).toBe(ruleCommitment(parseRule({ ...base, description: "" })));
+    expect(Object.keys(parseRule(base))).not.toContain("description");
+  });
+  it("accepts a trimmed description and binds it to the commitment", () => {
+    const r = parseRule({ ...base, description: "  Like it. Prove it.  " });
+    expect(r.description).toBe("Like it. Prove it.");
+    expect(ruleCommitment(r)).not.toBe(ruleCommitment(parseRule(base)));
+  });
+  it("rejects oversized descriptions and ignores unknown fields", () => {
+    expect(() => parseRule({ ...base, description: "x".repeat(281) })).toThrow();
+    expect(Object.keys(parseRule({ ...base, image: "culture" }))).not.toContain("image");
+  });
+});

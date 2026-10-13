@@ -100,6 +100,7 @@ export function CampaignDetails({ campaign, loading, missing, error, connected, 
   return <main id="campaign-content" tabIndex={-1} className={s.details} aria-labelledby="campaign-title">
     <div className={s.detailTop}><Link href="/dashboard" className={s.textButton}><ArrowLeft size={15}/>All campaigns</Link><Link href="/dashboard" className={s.iconButton} aria-label="Close campaign details"><X size={20}/></Link></div>
     <h2 id="campaign-title" ref={heading} tabIndex={-1}>{campaign?.definition.title ?? "Campaign details"}</h2>
+    {campaign?.definition.description && <p className={s.campaignLead}>{campaign.definition.description}</p>}
     {!connected ? <div className={s.detailEmpty}><LockKeyhole size={27}/><h3>See what could qualify.</h3><p>Sign in to view this campaign’s rules and choose what to verify.</p><button className={s.primary} disabled={!auth.configured || !auth.ready} onClick={auth.login}>Sign in to continue</button></div> : !campaign ? <p role={error ? "alert" : "status"} className={s.body}>{error || (loading ? "Loading campaign…" : missing ? "This campaign is not available. Return to Discover to choose another." : "Loading campaign…")}</p> : <>
       <p className={s.organizer}>Organizer <span>{campaign.creator_wallet.slice(0,6)}…{campaign.creator_wallet.slice(-4)}</span></p>
       <div className={s.rewardSummary}><span><GiftIcon/>{formatEther(rule!.payoutWei)} <small>test MON</small></span><span className={s.badge}>{benefits?.benefits.some(b => b.status === "available") ? "Funding checked" : "Funding unconfirmed"}</span></div>

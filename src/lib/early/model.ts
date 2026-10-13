@@ -18,6 +18,8 @@ export type Rule = {
   payoutWei: string;
   capacity: number;
   claimExpiry: number;
+  /** Optional public presentation; part of the immutable rule when present. */
+  description?: string;
 };
 export type Evidence = EarlyActivity & {
   id: string;
@@ -85,8 +87,15 @@ export function parseRule(value: unknown): Rule {
   ensure(minimumDistinctDays <= minimumDistinctEvents, "INVALID_REPEAT_RULE", "Distinct days cannot exceed required events.");
   const title = string(r.title, 100).trim();
   ensure(title.length > 0, "INVALID_TITLE", "A rule name is required.");
-  return { version, title, alternatives: r.alternatives.map(parseRoute),
+  const rule: Rule = { version, title, alternatives: r.alternatives.map(parseRoute),
     minimumDistinctEvents, minimumDistinctDays, payoutWei, capacity, claimExpiry: uint(r.claimExpiry, 253402300799) };
+  // The optional description is added only when present, so commitments of earlier rules are unchanged.
+  if (r.description !== undefined && r.description !== "") {
+    const description = string(r.description, 280).trim();
+    ensure(description.length > 0, "INVALID_DESCRIPTION", "Use a description of up to 280 characters.");
+    rule.description = description;
+  }
+  return rule;
 }
 export function ruleCommitment(rule: Rule) {
   return keccak256(toUtf8Bytes(JSON.stringify(parseRule(rule))));

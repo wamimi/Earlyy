@@ -57,3 +57,9 @@
 @media(max-width:640px){.journey{grid-template-columns:1fr;gap:24px;padding-top:4px}.journey>div{display:grid;grid-template-columns:24px 1fr;column-gap:14px}.journey svg{grid-row:1/3;margin:2px 0 0}.journey p{max-width:36ch}.journey h3{font-size:16px}.row{flex-direction:column;align-items:stretch}.field{flex-basis:auto}.button{width:100%}.selection a{margin-left:27px}.notice{gap:8px}.switcher{gap:4px}.switcher button{padding-inline:10px}.section{padding-block:24px}}
 
 .section>p:not(.meta),.route p{margin:12px 0}
+
+.faucetActions{display:flex;flex-wrap:wrap;gap:12px;margin:4px 0 16px}
+.faucetActions a.button{text-decoration:none}
+.explainer ol a{color:var(--green);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+
+.field textarea{display:block;width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical}

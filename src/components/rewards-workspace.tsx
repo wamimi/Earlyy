@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Gift, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, Copy, ExternalLink, Gift, LockKeyhole, ShieldCheck } from "lucide-react";
 import { DashboardSidebar } from "./fan-dashboard/dashboard-sidebar";
 import dashboard from "./fan-dashboard/fan-dashboard.module.css";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
@@ -87,6 +87,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   const [balance, setBalance] = useState("");
   // Paying gas is an explicit choice, never a fallback after a failed sponsored send.
   const [payClaimGas, setPayClaimGas] = useState(false);
+  const [walletCopied, setWalletCopied] = useState(false);
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const rule = rules.find(r => r.id === ruleId);
@@ -221,6 +222,10 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
     <details className={styles.explainer}><summary>Need test MON?</summary>
       <p>Verifying support does not require gas. To pay transaction fees or fund a campaign, get test MON for the account wallet shown below.</p>
       <p className={styles.wallet}>{auth.walletAddress}</p>
+      <div className={styles.faucetActions}>
+        <button type="button" className={`${styles.button} ${styles.secondary}`} disabled={!auth.walletAddress} onClick={() => { if (!auth.walletAddress) return; navigator.clipboard.writeText(auth.walletAddress).then(() => { setWalletCopied(true); setTimeout(() => setWalletCopied(false), 2000); }).catch(() => setWalletCopied(false)); }}><Copy size={15} aria-hidden="true" />&nbsp;{walletCopied ? "Address copied" : "Copy address"}</button>
+        <a className={styles.button} href="https://faucet.monad.xyz" target="_blank" rel="noreferrer">Open Monad faucet&nbsp;<ExternalLink size={15} aria-hidden="true" /></a>
+      </div>
       <ol><li>Copy this wallet address.</li><li>Open the <a href="https://faucet.monad.xyz" target="_blank" rel="noreferrer">Monad testnet faucet</a>, paste the address and follow its claim steps.</li><li>Return to Early after the funds arrive. For a reward claim from an Early wallet, select “Pay claim gas with my test MON” below.</li></ol>
       <p>Use Monad Testnet (chain 10143). Mainnet MON cannot pay testnet fees. Faucet availability and eligibility limits apply. Test MON has no monetary value.</p>
     </details>
@@ -320,10 +325,12 @@ function RuleForm({ disabled, create }: { disabled: boolean; create: (r: Rule) =
     e.preventDefault(); const f = new FormData(e.currentTarget);
     create({ version: Number(f.get("version")), title: String(f.get("title")), alternatives: routes,
       payoutWei: parseEther(String(f.get("payout"))).toString(), capacity: Number(f.get("capacity")),
-      claimExpiry: Math.floor(Date.parse(`${f.get("expiry")}Z`) / 1000), minimumDistinctEvents: Number(f.get("events")), minimumDistinctDays: Number(f.get("days")) });
+      claimExpiry: Math.floor(Date.parse(`${f.get("expiry")}Z`) / 1000), minimumDistinctEvents: Number(f.get("events")), minimumDistinctDays: Number(f.get("days")),
+      ...(String(f.get("description") ?? "").trim() ? { description: String(f.get("description")).trim() } : {}) });
   }
   return <form onSubmit={submit}>
     <div className={styles.row}><label className={styles.field}>Opportunity name<input name="title" required maxLength={100} /></label><label className={styles.field}>Claim window closes (UTC)<input type="datetime-local" name="expiry" required /></label></div>
+    <label className={styles.field}>Short description (optional, shown to fans)<textarea name="description" maxLength={280} rows={3} placeholder="What fans prove, what they get, and any disclaimer." /></label>
     <label className={styles.field}>Rule version<input name="version" type="number" min="1" max="2147483647" defaultValue="1" required /></label>
     {routes.map((r, i) => <div key={i} className={styles.route}><div className={styles.row}>
       <label className={styles.field}>Accepted activity<select value={r.route} onChange={e => setRoutes(routes.map((v,j) => j===i ? {...v, route:e.target.value as RuleRoute["route"], targetId:""} : v))}><option value="spotify_saved_track">Spotify track save</option><option value="youtube_subscription">YouTube subscription</option><option value="youtube_like">YouTube video like · testing</option></select></label>
