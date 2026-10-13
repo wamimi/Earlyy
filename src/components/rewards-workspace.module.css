@@ -63,3 +63,11 @@
 .explainer ol a{color:var(--green);text-decoration:underline;text-underline-offset:3px;font-weight:600}
 
 .field textarea{display:block;width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical}
+
+.dock{position:sticky;bottom:16px;z-index:20;display:grid;gap:8px;margin-top:24px}
+.dock .status{margin:0;background:#fff;border:1px solid var(--line);box-shadow:0 8px 28px #123f321f;display:flex;align-items:center;gap:10px}
+.dock .error{margin:0;box-shadow:0 8px 28px #123f321f}
+.spinner{flex-shrink:0;width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--green);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.saved{margin-top:10px;font-size:13px;color:var(--green)}

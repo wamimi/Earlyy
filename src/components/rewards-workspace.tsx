@@ -64,6 +64,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   const [ruleId, setRuleId] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState("");
   const [status, setStatus] = useState("Choose an opportunity or create a rule to begin.");
   const [error, setError] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -151,13 +152,14 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
     void api<{team:boolean;organizations:{id:string;name:string;kind:string}[]}>("access").then(value => { if (!cancelled) setAccess(value); }).catch(() => { if (!cancelled) setError("Couldn’t load workspace permissions. Creator controls remain locked."); });
     return () => { cancelled = true; };
   }, [api]);
-  async function run(work: () => Promise<void>) {
-    setBusy(true); setError("");
-    try { await work(); }
+  async function run(work: () => Promise<void>, label = "Working…"): Promise<boolean> {
+    setBusy(true); setError(""); setPending(label);
+    try { await work(); return true; }
     catch (e) {
       const code = (e as { code?: unknown })?.code;
       setError(code === 4001 || code === "ACTION_REJECTED" ? "You declined the wallet request. No payment was confirmed." : e instanceof Error ? e.message : "The action could not be completed.");
-    } finally { setBusy(false); }
+      return false;
+    } finally { setBusy(false); setPending(""); }
   }
   async function loadRules() {
     const result = await api<{ rules: RuleView[] }>("list-rules", { includeDrafts: access?.team === true });setRules(result.rules);
@@ -229,8 +231,6 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
       <ol><li>Copy this wallet address.</li><li>Open the <a href="https://faucet.monad.xyz" target="_blank" rel="noreferrer">Monad testnet faucet</a>, paste the address and follow its claim steps.</li><li>Return to Early after the funds arrive. For a reward claim from an Early wallet, select “Pay claim gas with my test MON” below.</li></ol>
       <p>Use Monad Testnet (chain 10143). Mainnet MON cannot pay testnet fees. Faucet availability and eligibility limits apply. Test MON has no monetary value.</p>
     </details>
-    <div className={styles.status} role="status" aria-live="polite">{status}</div>
-    {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
       {session && <div className={styles.handoff} ref={verificationPanel} tabIndex={-1} aria-label="Complete verification">
         <p>On your phone, open Reclaim Verifier. On a computer, scan the QR code with your phone. Sign into the source account you used to save the song, subscribe to the channel or like the video. You do not need to play anything or change your existing support.</p>
         {session.requestUrl && <><div className={styles.qr}><QRCodeSVG value={session.requestUrl} size={190} title="Open this proof request in Reclaim Verifier" /></div>
@@ -269,22 +269,26 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
       {auth.canSponsorClaims && <label className={styles.consent}><input type="checkbox" checked={payClaimGas} disabled={busy} onChange={e => setPayClaimGas(e.target.checked)} /><span><strong>Pay claim gas with my test MON</strong><br />Choose this for the faucet-funded demo or when sponsorship is unavailable. Your account wallet must hold test MON. You will review and approve the transaction in your wallet.</span></label>}
       <div className={styles.row}><label className={styles.field}>Benefit ID<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label>
         <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => refreshIndexed())}>Refresh activity</button>
-        <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"))}>Check eligibility & claim</button></div>
+        <button className={styles.button} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("claim"), "Checking eligibility…")}>Check eligibility & claim</button></div>
       <details className={styles.explainer}><summary>Funding wallet tools</summary><p>Unclaimed funds can be refunded after the campaign expires, by its funding wallet.</p><button className={`${styles.button} ${styles.secondary}`} disabled={busy || !deployed || !benefitId} onClick={() => run(() => transact("refund"))}>Refund expired benefit</button></details>
-      {txHash && <p><a href={`https://testnet.monadvision.com/tx/${txHash}`} target="_blank" rel="noreferrer">View transaction</a> · <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(() => reconcile())}>Check confirmation</button></p>}
+      {txHash && <p><a href={`https://testnet.monadvision.com/tx/${txHash}`} target="_blank" rel="noreferrer">View transaction</a> · <button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(() => reconcile(), "Checking confirmation…")}>Check confirmation</button></p>}
       {indexed && <p>Activity feed: {indexed.status.replaceAll("_", " ")}. {indexed.status === "unavailable" || indexed.status === "not_configured" ? "This does not mean a confirmed payment failed." : ""}</p>}
       {indexed?.benefit && <p>Funded {formatEther(indexed.benefit.funded)} MON · Paid {formatEther(indexed.benefit.paid)} MON · Remaining {formatEther(indexed.benefit.remaining)} MON · {BigInt(indexed.benefit.capacity) - BigInt(indexed.benefit.claims)} places left</p>}
       {indexed?.creator && <p>Creator totals: {indexed.creator.benefits} benefits · {indexed.creator.claims} claims · {formatEther(indexed.creator.paid)} MON paid · {formatEther(indexed.creator.refunded)} MON refunded</p>}
       {indexed?.claims.length ? <div className={styles.scroll}><table className={styles.table}><caption>Confirmed indexed claims</caption><thead><tr><th>Recipient</th><th>Test MON</th><th>Transaction</th></tr></thead><tbody>{indexed.claims.map(c => <tr key={c.id}><td>{c.beneficiary}</td><td>{formatEther(c.amount)}</td><td><a href={`https://testnet.monadvision.com/tx/${c.transactionHash}`}>View</a></td></tr>)}</tbody></table></div> : null}
     </section>
     {access?.team ? <section className={styles.section} hidden={panel !== "manage"}><h2>Early campaign management</h2><p>Define immutable reward terms. Funding can be added during the claim window; unclaimed funds can be refunded after it closes.</p>
-      <div className={styles.row}><label className={styles.field}>Saved campaign<select value={ruleId} onChange={e => {setRuleId(e.target.value);setEvaluation(null);setSession(null);setConsent(false);}}><option value="">Choose a campaign</option>{rules.map(r => <option key={r.id} value={r.id}>{r.definition.title}</option>)}</select></label><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(loadRules)}>Load saved campaigns</button><label className={styles.field}>Reward ID to manage<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label></div>
+      <div className={styles.row}><label className={styles.field}>Saved campaign<select value={ruleId} onChange={e => {setRuleId(e.target.value);setEvaluation(null);setSession(null);setConsent(false);}}><option value="">Choose a campaign</option>{rules.map(r => <option key={r.id} value={r.id}>{r.definition.title}</option>)}</select></label><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => run(loadRules, "Loading campaigns…")}>Load saved campaigns</button><label className={styles.field}>Reward ID to manage<input inputMode="numeric" value={benefitId} onChange={e => {setBenefitId(e.target.value);setIndexed(null);setTxHash("");}} placeholder="ID from a confirmed creation" /></label></div>
       <RuleForm disabled={busy} create={definition => run(async () => {
-        const saved = await api<RuleView>("rules", { rule: definition });await loadRules();setRuleId(saved.id);setStatus("Rule saved. Review the terms before funding the benefit.");
-      })} />
-      <div className={styles.row}><label className={styles.field}>Approved partner<select value={organizationId} onChange={e => setOrganizationId(e.target.value)}><option value="">Choose partner</option>{access.organizations.map(o => <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>)}</select></label><button className={styles.button} disabled={busy || !rule || !organizationId} onClick={() => run(async () => { await api("publish-rule", {ruleId,organizationId});setStatus("Campaign published to the fan dashboard."); })}>Publish campaign</button></div>
-      <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount))} />
+        const saved = await api<RuleView>("rules", { rule: definition });await loadRules();setRuleId(saved.id);setStatus(`Saved “${saved.definition.title}”. It is selected above. Next: publish it, then create and fund it.`);
+      }, "Saving rule…")} />
+      <div className={styles.row}><label className={styles.field}>Approved partner<select value={organizationId} onChange={e => setOrganizationId(e.target.value)}><option value="">Choose partner</option>{access.organizations.map(o => <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>)}</select></label><button className={styles.button} disabled={busy || !rule || !organizationId} onClick={() => run(async () => { await api("publish-rule", {ruleId,organizationId});setStatus(`Published “${rule?.definition.title ?? "campaign"}” to Discover. Next: create and fund it.`); }, "Publishing…")}>Publish campaign</button></div>
+      <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount), kind === "refund" ? "Preparing refund…" : "Preparing funding transaction…")} />
     </section> : <details className={styles.partner}><summary>For artists & brands</summary><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Explore campaign ideas</Link></details>}
+    <div className={styles.dock}>
+      <div className={styles.status} role="status" aria-live="polite">{busy ? <><span className={styles.spinner} aria-hidden="true" />{pending || "Working…"}</> : status}</div>
+      {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
+    </div>
   </>;
 }
 
@@ -319,16 +323,22 @@ function StandaloneProof({ busy, start, resolve, initialActivity }: { busy: bool
   </form>;
 }
 
-function RuleForm({ disabled, create }: { disabled: boolean; create: (r: Rule) => void }) {
+function RuleForm({ disabled, create }: { disabled: boolean; create: (r: Rule) => Promise<boolean> }) {
   const [routes, setRoutes] = useState<RuleRoute[]>([{ route: "spotify_saved_track", targetId: "", cutoff: "" }]);
-  function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); const f = new FormData(e.currentTarget);
-    create({ version: Number(f.get("version")), title: String(f.get("title")), alternatives: routes,
+  const [saving, setSaving] = useState(false);
+  const [savedTitle, setSavedTitle] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); if (savedTitle) return; const f = new FormData(e.currentTarget);
+    setSaving(true);
+    const ok = await create({ version: Number(f.get("version")), title: String(f.get("title")), alternatives: routes,
       payoutWei: parseEther(String(f.get("payout"))).toString(), capacity: Number(f.get("capacity")),
       claimExpiry: Math.floor(Date.parse(`${f.get("expiry")}Z`) / 1000), minimumDistinctEvents: Number(f.get("events")), minimumDistinctDays: Number(f.get("days")),
       ...(String(f.get("description") ?? "").trim() ? { description: String(f.get("description")).trim() } : {}) });
+    setSaving(false);
+    if (ok) setSavedTitle(String(f.get("title")).trim());
   }
-  return <form onSubmit={submit}>
+  // Any edit after a save means the next save creates a different rule.
+  return <form onSubmit={submit} onChange={() => { if (savedTitle) setSavedTitle(""); }}>
     <div className={styles.row}><label className={styles.field}>Opportunity name<input name="title" required maxLength={100} /></label><label className={styles.field}>Claim window closes (UTC)<input type="datetime-local" name="expiry" required /></label></div>
     <label className={styles.field}>Short description (optional, shown to fans)<textarea name="description" maxLength={280} rows={3} placeholder="What fans prove, what they get, and any disclaimer." /></label>
     <label className={styles.field}>Rule version<input name="version" type="number" min="1" max="2147483647" defaultValue="1" required /></label>
@@ -341,7 +351,8 @@ function RuleForm({ disabled, create }: { disabled: boolean; create: (r: Rule) =
     <div className={styles.row}><label className={styles.field}>Payout per person (test MON)<input name="payout" type="number" step="0.000001" min="0.000001" defaultValue="0.01" required /></label><label className={styles.field}>Capacity<input name="capacity" type="number" min="1" max="1000000" defaultValue="10" required /></label></div>
     <div className={styles.row}><label className={styles.field}>Distinct events required<input name="events" type="number" min="1" max="100" defaultValue="1" required /></label><label className={styles.field}>Distinct UTC dates required<input name="days" type="number" min="1" max="100" defaultValue="1" required /></label></div>
     <p className={styles.meta}>Repeated copies of one event never increase support. Repeat-support collection coverage remains experimental.</p>
-    <button className={styles.button} disabled={disabled}>Save immutable rule</button>
+    <button className={styles.button} disabled={disabled || saving || Boolean(savedTitle)}>{saving ? "Saving…" : savedTitle ? "Saved ✓" : "Save immutable rule"}</button>
+    {savedTitle && <p className={styles.saved} role="status">“{savedTitle}” is saved and selected above. Saving the same terms again will not create a duplicate. Change any field to save a different rule.</p>}
   </form>;
 }
 function FundingForm({ disabled, selectedRule, benefitSelected, transact }: { disabled: boolean; selectedRule: boolean; benefitSelected: boolean; transact: (kind:"create"|"fund"|"refund",amount?:string)=>void }) {
