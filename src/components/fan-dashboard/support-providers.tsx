@@ -9,7 +9,7 @@ export const supportProviders = [
   { route: "youtube_like", platform: "YouTube", title: "Liked a video", description: "Verify a dated like of one exact video.", linkType: "Video link", action: "Verify video like" },
 ] as const satisfies readonly { route: RouteId; platform: string; title: string; description: string; linkType: string; action: string }[];
 
-function PlatformLogo({ platform }: { platform: "Spotify" | "YouTube" }) {
+export function PlatformLogo({ platform }: { platform: "Spotify" | "YouTube" }) {
   return platform === "Spotify" ? <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
     <circle cx="32" cy="32" r="32" fill="#1ed760" />
     <g fill="none" stroke="#fff" strokeLinecap="round">

@@ -23,3 +23,11 @@
 
 .campaignDescription{font-size:13px!important;line-height:1.55;color:var(--muted);max-width:60ch;margin:2px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .campaignLead{font-size:15px;line-height:1.6;color:var(--muted);max-width:62ch;margin:8px 0 14px}
+.rewardPanel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:22px;padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.rewardPanel>div{display:grid;gap:4px}
+.rewardAmount{font-size:30px;font-weight:650;letter-spacing:-.02em;color:var(--ink,#123f32)}
+.rewardAmount small{font-size:15px;font-weight:500}
+.rewardMeta{font-size:13px;color:var(--muted)}
+.rewardPlaces{font-size:13px;font-weight:600;color:var(--green);background:var(--soft);padding:8px 12px;border-radius:999px}
+.platformLogo{display:inline-flex;width:34px;height:30px;flex-shrink:0}
+.platformLogo svg{width:100%;height:100%}
