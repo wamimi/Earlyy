@@ -71,3 +71,4 @@
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spinner{animation:none}}
 .saved{margin-top:10px;font-size:13px;color:var(--green)}
+.dock .status a{color:var(--green);font-weight:600;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}

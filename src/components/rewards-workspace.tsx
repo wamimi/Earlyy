@@ -182,10 +182,16 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
     if (data.status === "indexed") setStatus("The activity feed is up to date.");
   }
   async function reconcile(hash = txHash) {
-    const receipt = await api<{ status: string; events?: { benefitId: string }[] }>("reconcile", { txHash: hash });
-    if (receipt.status !== "confirmed") { setStatus("Transaction submitted. Waiting for receipt confirmation."); return; }
+    const receipt = await api<{ status: string; events?: { name: string; benefitId: string }[] }>("reconcile", { txHash: hash });
+    if (receipt.status !== "confirmed") { setStatus("Transaction submitted. Waiting for confirmation. Check again in a few seconds."); return; }
     const id = receipt.events?.find(event => event.benefitId === benefitId)?.benefitId ?? receipt.events?.[0]?.benefitId ?? benefitId;
     setBenefitId(id);setStatus("Transaction confirmed. Checking the activity feed…");await refreshIndexed(id, hash);
+    const names = receipt.events?.map(event => event.name) ?? [];
+    setStatus(names.includes("BenefitClaimed") ? "Reward claimed. The test MON has been sent to your wallet. View the transaction on the Monad explorer below."
+      : names.includes("BenefitCreated") ? `Reward ${id} created and funded. Fans can claim it once the campaign is published.`
+      : names.includes("BenefitFunded") ? `Funding added to reward ${id}.`
+      : names.includes("BenefitClosed") ? "Refund confirmed. Unclaimed test MON was returned to the funding wallet."
+      : "Transaction confirmed.");
   }
   async function transact(kind: "create" | "fund" | "claim" | "refund", amountMon = "0") {
     setStatus("Checking your account, benefit terms and network…");
@@ -298,7 +304,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
       <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount), kind === "refund" ? "Preparing refund…" : "Preparing funding transaction…")} />
     </section> : <details className={styles.partner}><summary>For artists & brands</summary><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Explore campaign ideas</Link></details>}
     <div className={styles.dock}>
-      <div className={styles.status} role="status" aria-live="polite">{busy ? <><span className={styles.spinner} aria-hidden="true" />{pending || "Working…"}</> : status}</div>
+      <div className={styles.status} role="status" aria-live="polite">{busy ? <><span className={styles.spinner} aria-hidden="true" />{pending || "Working…"}</> : <span>{status}{txHash && <> <a href={`https://testnet.monadvision.com/tx/${txHash}`} target="_blank" rel="noreferrer">View on Monad explorer ↗</a></>}</span>}</div>
       {error && <p className={`${styles.status} ${styles.error}`} role="alert">{error}</p>}
     </div>
   </>;
