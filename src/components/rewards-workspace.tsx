@@ -89,6 +89,7 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   // Paying gas is an explicit choice, never a fallback after a failed sponsored send.
   const [payClaimGas, setPayClaimGas] = useState(false);
   const [walletCopied, setWalletCopied] = useState(false);
+  const [recoverHash, setRecoverHash] = useState("");
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const rule = rules.find(r => r.id === ruleId);
@@ -149,7 +150,15 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
   }, [polling, session, checkProof]);
   useEffect(() => {
     let cancelled = false;
-    void api<{team:boolean;organizations:{id:string;name:string;kind:string}[]}>("access").then(value => { if (!cancelled) setAccess(value); }).catch(() => { if (!cancelled) setError("Couldn’t load workspace permissions. Creator controls remain locked."); });
+    void api<{team:boolean;organizations:{id:string;name:string;kind:string}[]}>("access").then(async value => {
+      if (cancelled) return;
+      setAccess(value);
+      // Team members see their saved campaigns without an extra click.
+      if (value.team) {
+        const result = await api<{ rules: RuleView[] }>("list-rules", { includeDrafts: true }).catch(() => null);
+        if (!cancelled && result) { setRules(result.rules); setRuleId(current => current || result.rules[0]?.id || ""); }
+      }
+    }).catch(() => { if (!cancelled) setError("Couldn’t load workspace permissions. Creator controls remain locked."); });
     return () => { cancelled = true; };
   }, [api]);
   async function run(work: () => Promise<void>, label = "Working…"): Promise<boolean> {
@@ -283,6 +292,9 @@ function Workspace({ deployed, initialSessionId, initialBenefitId, initialActivi
         const saved = await api<RuleView>("rules", { rule: definition });await loadRules();setRuleId(saved.id);setStatus(`Saved “${saved.definition.title}”. It is selected above. Next: publish it, then create and fund it.`);
       }, "Saving rule…")} />
       <div className={styles.row}><label className={styles.field}>Approved partner<select value={organizationId} onChange={e => setOrganizationId(e.target.value)}><option value="">Choose partner</option>{access.organizations.map(o => <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>)}</select></label><button className={styles.button} disabled={busy || !rule || !organizationId} onClick={() => run(async () => { await api("publish-rule", {ruleId,organizationId});setStatus(`Published “${rule?.definition.title ?? "campaign"}” to Discover. Next: create and fund it.`); }, "Publishing…")}>Publish campaign</button></div>
+      <div className={styles.route}><h3>Check an earlier transaction</h3><p className={styles.meta}>If the page was reloaded before a transaction was confirmed, paste its hash from your wallet or the Monad explorer. This only reads the chain and records the result; it never sends a new transaction.</p>
+        <div className={styles.row}><label className={styles.field}>Transaction hash<input value={recoverHash} onChange={e => setRecoverHash(e.target.value.trim())} placeholder="0x…" spellCheck={false} /></label>
+          <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !/^0x[0-9a-fA-F]{64}$/.test(recoverHash)} onClick={() => run(async () => { setTxHash(recoverHash); await reconcile(recoverHash); }, "Checking transaction…")}>Check transaction</button></div></div>
       <FundingForm disabled={busy || !deployed} selectedRule={Boolean(rule)} benefitSelected={Boolean(benefitId)} transact={(kind, amount) => run(() => transact(kind, amount), kind === "refund" ? "Preparing refund…" : "Preparing funding transaction…")} />
     </section> : <details className={styles.partner}><summary>For artists & brands</summary><h2>{access?.organizations.length ? "Your partner workspace" : "For artists & brands"}</h2>{access?.organizations.map(o => <p key={o.id}>{o.name} · Approved {o.kind} partner</p>)}<p>Campaigns are set up with the Early team. Recognize early supporters, reward loyalty and measure verified participation and redemptions.</p><Link href="/brands">Explore campaign ideas</Link></details>}
     <div className={styles.dock}>
