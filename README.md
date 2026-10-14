@@ -5,7 +5,7 @@
 Early lets fans prove they were early to an artist, creator or brand before everyone else, using their real Spotify and YouTube activity. Artists, creators and brands can then reward their real day ones onchain on Monad.
 
 - **Live app:** [proveearly.xyz](https://www.proveearly.xyz) (Monad testnet)
-- **Demo video (2:52):** [watch on Google Drive](https://drive.google.com/file/d/1lWnjAC7gLBEO_EQO9YKGN_HR7GRtny20/view?usp=drive_link)
+- **Demo video :** [watch here](https://drive.google.com/file/d/1lWnjAC7gLBEO_EQO9YKGN_HR7GRtny20/view?usp=drive_link)
 - **Launch video:** [watch on X](https://x.com/proveearly/status/2110167868507623851)
 - **Escrow contract (Monad testnet):** [`0x32192Beb858561c67CCe7C1b2dbdD60E8484Df41`](https://testnet.monadvision.com/address/0x32192Beb858561c67CCe7C1b2dbdD60E8484Df41)
 - **Hackathon track:** Social, Attention & Culture
@@ -68,7 +68,6 @@ flowchart LR
 - The YouTube like route reads the first page of Google My Activity likes, which holds recent likes. Today it proves "liked before a cutoff", not the date of a like from years ago. Paging through older history is the next piece of work.
 - Spotify recipes page through up to 100 pages of a library.
 - Rewards are test MON with no monetary value.
-- Privy gas sponsorship is implemented but unfunded. The live demo used the explicit "pay claim gas with my test MON" option.
 
 ## Monad integration
 
