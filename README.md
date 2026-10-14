@@ -69,6 +69,20 @@ flowchart LR
 - Spotify recipes page through up to 100 pages of a library.
 - Rewards are test MON with no monetary value.
 
+## Try it (judges and testers)
+
+No private access is needed to test the fan flow. Anyone can do this on the live app:
+
+1. Get some test MON for the claim's gas from the [Monad faucet](https://faucet.monad.xyz). The app has a "Copy address" button to make this easier.
+2. Install **Reclaim Verifier** on your phone (App Store or Google Play).
+3. On YouTube, like the [Proof of Rickroll video](https://www.youtube.com/watch?v=dQw4w9WgXcQ) with your Google account.
+4. Open [proveearly.xyz](https://www.proveearly.xyz), sign in (email, Google, X or a wallet), go to **Discover** and open **Proof of Rickroll**.
+5. Choose **YouTube · Liked this video**, agree to share only that result, and scan the QR code with your phone. Reclaim proves the like inside a private zkTLS session.
+6. Back on the desktop the campaign says **You qualify**. Click **Claim reward**, tick "Pay claim gas with my test MON", and approve the transaction.
+7. Follow the **View on Monad explorer** link to see the claim, and watch the reward's places left update through Envio.
+
+Notes: each Google account and each wallet can claim a reward only once. The campaign accepts likes made before 27 Oct 2026, 21:00 UTC. The organiser workspace (`/rewards`), where campaigns are created and funded, is limited to approved partners. Organiser access for judges is available on request through the contact on the site.
+
 ## Monad integration
 
 **Why Monad.** Early pays many small rewards: one per verified fan. That only works if each payout is fast and cheap enough to be worth sending, and if fans see the result in seconds instead of waiting. Monad's fast blocks and low fees make a one-cent reward per fan practical. Its EVM compatibility let us use audited OpenZeppelin primitives, Foundry and the existing wallet and indexer tooling unchanged.
